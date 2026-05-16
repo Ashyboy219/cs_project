@@ -1,0 +1,767 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=IM+Fell+DW+Pica:ital@0;1&family=IM+Fell+DW+Pica+SC&display=swap');
+
+:root {
+  --bg:#3e4130;
+  --bg-deep:#2f3124;
+  --sidebar:#2e3023;
+  --ink:#2a2818;
+  --ink-soft:#4a4732;
+  --gold:#9a8f2c;
+  --gold-deep:#776f24;
+  --rust:#c25742;
+  --rust-deep:#a04331;
+  --money-green:#7e9156;
+  --money-green-deep:#566532;
+
+  /* Paper variants */
+  --paper-yellow:#ece2b1;
+  --paper-yellow-hi:#f3eac0;
+  --paper-yellow-lo:#d8c98a;
+  --paper-peach:#f3d8c2;
+  --paper-peach-hi:#f6e2cf;
+  --paper-peach-lo:#e0b894;
+  --paper-blush:#eedfc8;
+  --paper-blush-hi:#f4e8d4;
+  --paper-blush-lo:#d8c0a0;
+  --paper-blue:#c3d4d3;
+  --paper-blue-hi:#d6e2e0;
+  --paper-blue-lo:#9eb4b3;
+
+  color-scheme: light;
+}
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+html, body {
+  height:100%; background:#1d1e16; overflow:hidden;
+  font-family:'IM Fell English', Georgia, serif; color:var(--ink); font-weight:400;
+}
+button{ font: inherit; cursor: pointer; background:none; border:0; color:inherit; }
+input{ font: inherit; }
+
+/* ----- Stage / Frame -----
+   Single generated background: organic radial "cloud" variation + subtle SVG fiber noise.
+   No tiling geometry; the texture should read like felt, not like wallpaper. */
+.stage{ position:fixed; inset:0; display:grid; place-items:center; background:#1d1e16; }
+.frame{
+  width:1280px; height:720px; position:relative;
+  transform-origin:center center;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 50% 45% at 12% 18%, rgba(0,0,0,.22), transparent 70%),
+    radial-gradient(ellipse 55% 40% at 82% 14%, rgba(0,0,0,.14), transparent 70%),
+    radial-gradient(ellipse 60% 45% at 28% 88%, rgba(0,0,0,.24), transparent 70%),
+    radial-gradient(ellipse 55% 45% at 86% 76%, rgba(0,0,0,.18), transparent 70%),
+    radial-gradient(ellipse 45% 30% at 55% 48%, rgba(255,255,255,.035), transparent 65%);
+  overflow:hidden;
+  box-shadow:0 30px 80px rgba(0,0,0,.55);
+}
+/* Subtle fiber noise — one SVG turbulence layer, fills the frame, no tiling. */
+.frame::before{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1280' height='720'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch' seed='4'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size:100% 100%;
+  background-repeat:no-repeat;
+  mix-blend-mode:overlay;
+  opacity:.18;
+}
+.layout{ position:absolute; inset:0; display:grid; grid-template-columns:285px 1fr; z-index:1; }
+
+/* ----- Sidebar ----- */
+.sidebar{
+  position:relative;
+  background-color: var(--sidebar);
+  /* Slightly darker organic shading so the sidebar reads as a distinct region
+     without competing with the frame's generated texture. */
+  background-image:
+    radial-gradient(ellipse 110% 60% at 30% 0%, rgba(0,0,0,.18), transparent 70%),
+    radial-gradient(ellipse 90% 70% at 60% 100%, rgba(0,0,0,.25), transparent 75%);
+  padding:18px 24px 12px;
+  display:flex; flex-direction:column;
+  border-right:1px solid rgba(0,0,0,.4); color:#cfc89a;
+}
+.sidebar > *{ position:relative; z-index:1; }
+
+.year-label{
+  font-family:'IM Fell English SC', serif;
+  color:#d8d09f; font-size:14px; display:flex; align-items:baseline; gap:8px;
+  letter-spacing:.08em; text-transform:uppercase;
+}
+.year-label .big{
+  font-family:'IM Fell DW Pica', serif; font-weight:400; font-size:28px; color:#ece4ad;
+  letter-spacing:0;
+}
+.year-label .small{ font-size:13px; letter-spacing:.1em; color:#bab280; }
+
+.progress{
+  margin-top:8px; height:16px; width:210px;
+  border:1.5px solid #6b6634; border-radius:2px; background:#1f2117;
+  padding:2px; display:flex; gap:1px;
+}
+.progress .tick{ flex:1; background:#b9af3f; border-radius:1px; transition: background .25s ease; }
+.progress .tick.empty{ background:transparent; }
+
+.pig-area{ position:relative; margin-top:12px; height:170px; }
+.speech{
+  position:absolute; top:0; left:130px;
+  background:#f1e8c8; color:#2a2818;
+  font-family:'IM Fell English', serif; font-size:14px; line-height:1.18;
+  padding:8px 12px; border-radius:18px;
+  width:115px; text-align:center;
+  font-style: italic;
+}
+.speech::after{
+  content:""; position:absolute; left:-9px; bottom:12px;
+  width:0; height:0; border:7px solid transparent; border-right-color:#f1e8c8;
+}
+
+.stats{ display:flex; flex-direction:column; gap:12px; color:#dcd5a4; margin-top:-4px; }
+.stats .label{
+  font-family:'IM Fell English SC', serif; letter-spacing:.08em; font-size:13px; color:#cfc89a;
+  text-transform:uppercase; display:flex; align-items:center; gap:6px;
+}
+.stats .val{
+  font-family:'IM Fell DW Pica', serif; font-size:28px; color:#ece4ad; letter-spacing:.005em;
+  font-variant-numeric: tabular-nums;
+}
+.sortcaret{ display:inline-block; color:#a8a06a; font-size:10px; }
+
+.moneystack{ display:block; width:140px; height:74px; margin:6px 0 4px -12px; pointer-events:none; }
+
+.menu{
+  margin-top:auto; display:flex; flex-direction:column;
+  border-top:1px dashed #5a5a37; padding-top:8px; padding-bottom:36px;
+}
+.menu .item{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:9px 2px; border-bottom:1px dashed #5a5a37;
+  font-family:'IM Fell English SC', serif; font-size:13px; letter-spacing:.1em; color:#dcd5a4;
+  text-transform:uppercase; cursor:pointer; width:100%; text-align:left;
+}
+.menu .item .lt{ display:flex; align-items:center; gap:8px; }
+.menu .item .caret{ color:#a8a06a; font-size:10px; }
+.menu .badge{ display:inline-flex; align-items:center; gap:6px; font-family:'IM Fell English',serif; font-size:11px; color:#dcd5a4; }
+.badge .num{
+  background:#7a2418; color:#f3e8b5; border-radius:50%; width:16px; height:16px;
+  display:grid; place-items:center; font-size:10px; font-family:'IM Fell DW Pica',serif;
+}
+
+.info{
+  position:absolute; left:20px; bottom:12px; width:22px; height:22px; border-radius:50%;
+  background:#cfc89a; color:#2e3023; display:grid; place-items:center;
+  font-family:'IM Fell English',serif; font-style:italic; font-size:14px;
+}
+
+/* Sidebar standings (compact) */
+.standings{ margin:0 0 6px; display:flex; flex-direction:column; gap:3px; font-family:'IM Fell English', serif; font-size:12px; color:#dcd5a4; }
+.standings .row{ display:flex; align-items:center; gap:6px; }
+.standings .row .rank{ width:14px; color:#a8a06a; font-family:'IM Fell DW Pica',serif; font-size:11px; text-align:right; }
+.standings .row .ava{ font-size:13px; }
+.standings .row .nm{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.standings .row .nw{ font-variant-numeric:tabular-nums; font-family:'IM Fell DW Pica',serif; color:#ece4ad; font-size:11px; }
+.standings .row.you{ color:#ece4ad; }
+.standings .row.you .nm{ font-weight:600; }
+
+/* ----- MAIN GRID ----- */
+.main{
+  padding:14px 14px 12px 12px;
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  grid-auto-rows:auto;
+  gap:11px;
+  align-content:start;
+  height:100%;
+}
+.main.with-news .card.savings,
+.main.with-news .card.cd,
+.main.with-news .card.index{ height:188px; }
+.main.with-news .card.stocks-band{ height:208px; }
+.main.with-news .card.bonds,
+.main.with-news .card.wheat,
+.main.with-news .card.gold{ height:184px; }
+/* When tabs are also visible, cards shrink slightly more. */
+.main.with-tabs.with-news .card.savings,
+.main.with-tabs.with-news .card.cd,
+.main.with-tabs.with-news .card.index{ height:178px; }
+.main.with-tabs.with-news .card.stocks-band{ height:198px; }
+.main.with-tabs.with-news .card.bonds,
+.main.with-tabs.with-news .card.wheat,
+.main.with-tabs.with-news .card.gold{ height:174px; }
+
+/* ---------- Stocks page (full-size cards) ---------- */
+.stocks-page{
+  grid-column:1 / span 3;
+  display:grid; grid-template-columns:repeat(5, 1fr); gap:11px;
+  height: 100%; min-height:0;
+}
+.stock-card{
+  position:relative; overflow:visible; isolation:isolate; min-height:0;
+  border:1px solid rgba(70,55,15,.45); border-radius:5px;
+  padding:10px 12px 10px;
+  display:flex; flex-direction:column;
+  background-color:#ece2b1;
+  background-image:
+    radial-gradient(ellipse 70% 50% at 30% 0%, rgba(255,250,220,.8), transparent 70%),
+    radial-gradient(ellipse 90% 60% at 70% 100%, rgba(180,160,90,.3), transparent 70%);
+  box-shadow:0 1px 0 rgba(255,250,210,.55) inset, 0 6px 10px -4px rgba(0,0,0,.4);
+}
+.stock-card.up .scprice{ color:var(--gold-deep); }
+.stock-card.up .scdelta{ color:var(--gold-deep); }
+.stock-card .scprice{ color:var(--rust-deep); }
+.stock-card .scdelta{ color:var(--rust-deep); }
+.stock-card.hilite{ border-color:var(--rust); box-shadow: 0 0 0 2px var(--rust), 0 1px 0 rgba(255,250,210,.5) inset; }
+.stock-card .scname{
+  font-family:'IM Fell English SC',serif; font-size:13px; letter-spacing:.05em;
+  text-transform:uppercase; text-align:center; color:#2a2818; padding-bottom:4px;
+  border-bottom:1px solid rgba(60,50,20,.3);
+}
+.stock-card .scsub{
+  font-family:'IM Fell English',serif; font-style:italic; font-size:11px;
+  color:#6b5e1d; text-align:center; margin-top:2px;
+}
+.stock-card .scprice-row{
+  display:flex; justify-content:space-between; align-items:baseline;
+  margin-top:6px; padding:0 2px;
+}
+.stock-card .scprice{
+  font-family:'IM Fell DW Pica',serif; font-size:18px; font-variant-numeric:tabular-nums;
+}
+.stock-card .scdelta{
+  font-family:'IM Fell DW Pica',serif; font-size:14px; font-variant-numeric:tabular-nums;
+}
+.stock-card .scdelta.up::before{ content:"▲ "; font-size:9px; }
+.stock-card .scdelta.dn::before{ content:"▼ "; font-size:9px; }
+.stock-card .scchart{ flex:1; min-height:0; margin:6px -2px; }
+.stock-card .scchart svg{ width:100%; height:100%; display:block; }
+.stock-card .scfoot{
+  display:flex; flex-direction:column; gap:2px;
+  font-family:'IM Fell DW Pica',serif; font-size:11px; color:#2a2818;
+  border-top:1px dashed rgba(60,50,20,.45); padding-top:5px;
+}
+.stock-card .scfoot .row{ display:flex; justify-content:space-between; }
+.stock-card .scfoot .row .lbl{
+  font-family:'IM Fell English SC',serif; font-size:10px; letter-spacing:.06em; color:#4a4732;
+  text-transform:uppercase;
+}
+.stock-card .scfoot .row .v{ font-variant-numeric:tabular-nums; }
+.stock-card .scbtns{ display:flex; gap:6px; margin-top:6px; }
+.stock-card .scbtns .btn{ flex:1; }
+.stock-card .scqty{
+  display:flex; justify-content:space-between; align-items:baseline;
+  font-family:'IM Fell DW Pica',serif; font-size:11px; color:#2a2818;
+  margin-top:4px; padding-top:4px; border-top:1px dotted rgba(60,50,20,.4);
+}
+.stock-card .scqty button{ background:none; border:0; padding:0; color:inherit; font:inherit; cursor:pointer; }
+.stock-card .scqty button.armed{ color:var(--rust-deep); font-weight:600; }
+.stock-card .scorders{ margin-top:4px; text-align:center; }
+
+/* ----- Tab bar ----- */
+.tab-bar{
+  grid-column:1 / span 3;
+  display:flex; gap:6px; align-items:stretch;
+  border-bottom:1px solid rgba(0,0,0,.32);
+  padding:0 2px 0 2px;
+  height:30px;
+}
+.tab-bar .tab{
+  font-family:'IM Fell English SC',serif; font-size:11px; letter-spacing:.08em;
+  text-transform:uppercase; color:#cfc89a;
+  padding:6px 14px 6px;
+  border-radius:3px 3px 0 0;
+  border:1px solid transparent; border-bottom:0;
+  background:transparent; cursor:pointer;
+}
+.tab-bar .tab:hover{ color:#f1e9b6; }
+.tab-bar .tab.active{
+  color:#2a2818;
+  background:linear-gradient(180deg, #ece2b1 0%, #d8c98a 100%);
+  border-color:rgba(70,55,15,.45);
+  box-shadow:0 1px 0 rgba(255,250,210,.5) inset;
+}
+.tab-bar .right{ margin-left:auto; display:flex; align-items:center; gap:10px; }
+
+/* ----- Phase timer ----- */
+.phase-timer{
+  display:flex; align-items:center; gap:8px;
+  font-family:'IM Fell English SC',serif; font-size:11px; letter-spacing:.1em;
+  color:#cfc89a;
+}
+.phase-timer .label{ min-width:64px; }
+.phase-timer .label.trading{ color:#cfc89a; }
+.phase-timer .label.lock   { color:#e89b66; animation:lockPulse 1s ease-in-out infinite; }
+.phase-timer .label.reveal { color:#f1e9b6; }
+@keyframes lockPulse { 0%,100%{ opacity:.65; } 50%{ opacity:1; } }
+.phase-timer .bar{
+  width:170px; height:7px; background:#1f2117;
+  border:1px solid #6b6634; border-radius:2px; padding:1px;
+  position:relative; overflow:hidden;
+}
+.phase-timer .bar > .fill{
+  height:100%; background:#b9af3f; transition:width 100ms linear; border-radius:1px;
+}
+.phase-timer .bar > .fill.lock  { background:#c25742; }
+.phase-timer .bar > .fill.reveal{ background:#ece4ad; }
+.phase-timer .secs{
+  font-family:'IM Fell DW Pica',serif; font-variant-numeric:tabular-nums;
+  font-size:13px; color:#ece4ad; min-width:30px;
+}
+
+/* ----- News strip ----- */
+.news-strip{
+  grid-column:1 / span 3;
+  display:flex; gap:8px; align-items:stretch;
+  height:42px;
+}
+.news-chip{
+  flex:1; min-width:0; position:relative;
+  padding:5px 10px 4px 10px; border:1px solid rgba(70,55,15,.45); border-radius:4px;
+  background-color:#ece2b1;
+  background-image:
+    radial-gradient(ellipse 70% 50% at 30% 0%, rgba(255,250,220,.85), transparent 70%),
+    radial-gradient(ellipse 90% 60% at 70% 100%, rgba(180,160,90,.30), transparent 70%);
+  display:flex; flex-direction:column; gap:1px; cursor:pointer;
+  box-shadow:0 1px 0 rgba(255,250,220,.55) inset, 0 2px 3px rgba(0,0,0,.18);
+  text-align:left;
+  overflow:hidden;
+}
+.news-chip:hover{ filter:brightness(1.04); }
+.news-chip.pinned{
+  border-color:var(--rust); box-shadow:0 0 0 1.5px var(--rust), 0 1px 0 rgba(255,250,220,.55) inset;
+}
+.news-chip .meta{
+  display:flex; align-items:center; gap:6px;
+  font-family:'IM Fell English SC', serif; font-size:9.5px; letter-spacing:.06em; color:#4a4732;
+}
+.news-chip .cred{
+  display:inline-flex; align-items:center; gap:3px;
+  font-family:'IM Fell English SC',serif; font-size:9.5px; letter-spacing:.05em;
+  padding:0 4px; border-radius:2px;
+}
+.news-chip .cred.wire    { background:#3a432e; color:#ece4ad; }
+.news-chip .cred.analyst { background:#88723a; color:#fff7cf; }
+.news-chip .cred.rumor   { background:#8a3a2e; color:#f3d8c2; font-style:italic; }
+.news-chip .when{ color:#8b7e3f; }
+.news-chip .text{
+  font-family:'IM Fell DW Pica', serif; font-size:13px; color:#2a2818; line-height:1.18;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.news-chip.peach{ background-color:#f3d8c2; }
+.news-chip.blush{ background-color:#eedfc8; }
+.news-chip.blue { background-color:#c3d4d3; }
+.news-chip.empty{
+  background:rgba(255,255,255,.04);
+  border-style:dashed; border-color:rgba(140,120,60,.35);
+  color:rgba(255,250,210,.4); cursor:default;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'IM Fell English',serif; font-style:italic; font-size:12px;
+}
+
+/* ----- Order target button + popover ----- */
+.order-btn{
+  font-family:'IM Fell English',serif; font-style:italic; font-size:11px;
+  color:#6b5e1d; padding:0 4px; text-decoration:underline; text-decoration-style:dotted;
+  cursor:pointer; background:transparent; border:0;
+}
+.order-btn:hover{ color:#2a2818; }
+.order-btn.has{ color:var(--rust-deep); font-weight:600; text-decoration-style:solid; }
+
+.order-popover{
+  position:absolute; z-index:20;
+  left:8px; right:8px; bottom:8px;
+  background-color:#f3eac0;
+  border:1px solid #8b7e3f; border-radius:4px;
+  padding:8px 10px;
+  box-shadow:0 8px 16px -6px rgba(0,0,0,.5), 0 1px 0 rgba(255,250,210,.55) inset;
+}
+.order-popover .head{
+  display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;
+  font-family:'IM Fell English SC',serif; font-size:11px; letter-spacing:.06em; color:#2a2818;
+}
+.order-popover .head .x{ cursor:pointer; color:#6b5e1d; }
+.order-popover .row{
+  display:flex; align-items:center; gap:6px; margin-bottom:4px;
+  font-family:'IM Fell DW Pica',serif; font-size:11px; color:#2a2818;
+}
+.order-popover .row .kind-chip{
+  display:inline-block; padding:1px 5px; border-radius:2px;
+  font-family:'IM Fell English SC',serif; font-size:9px; letter-spacing:.05em;
+  background:#7a6432; color:#f1e8c8;
+}
+.order-popover .row .kind-chip.buy{  background:#566532; }
+.order-popover .row .kind-chip.tp{   background:#5a6a36; }
+.order-popover .row .kind-chip.sl{   background:#7a2418; }
+.order-popover .row .qty{ font-variant-numeric:tabular-nums; }
+.order-popover .row .at{  color:#6b5e1d; }
+.order-popover .row .price{ font-variant-numeric:tabular-nums; }
+.order-popover .row .cancel{
+  margin-left:auto; cursor:pointer; color:#7a2418; font-style:italic;
+  background:transparent; border:0; font:inherit;
+}
+.order-popover .empty{
+  font-family:'IM Fell English',serif; font-style:italic; color:#6b5e1d; font-size:11px;
+  margin-bottom:6px; text-align:center;
+}
+.order-popover .form{
+  display:grid; grid-template-columns:auto 1fr 1fr auto; gap:4px; align-items:center;
+  border-top:1px dashed rgba(60,50,20,.45); padding-top:6px; margin-top:2px;
+}
+.order-popover .form select,
+.order-popover .form input{
+  border:1px solid #8b7e3f; background:rgba(255,250,210,.6); color:#2a2818;
+  font-family:'IM Fell DW Pica',serif; font-size:11px; padding:2px 4px; border-radius:2px;
+  font-variant-numeric:tabular-nums; min-width:0; width:100%;
+}
+.order-popover .form .place{
+  font-family:'IM Fell English',serif; font-style:italic; font-size:11px;
+  background:linear-gradient(180deg,#efe4b5 0%, #d8c986 100%);
+  border:1px solid #8b7e3f; border-radius:3px; padding:1px 8px; cursor:pointer;
+  box-shadow:0 1px 0 rgba(255,250,210,.55) inset;
+}
+
+/* Sparkline order markers (small horizontal line at trigger price) */
+.order-marker{
+  position:absolute; right:0; height:0;
+  border-top:1px dashed; pointer-events:none;
+  font-family:'IM Fell DW Pica',serif; font-size:9px; line-height:1;
+}
+.order-marker.buy{ border-color:#566532; color:#566532; }
+.order-marker.tp { border-color:#566532; color:#566532; }
+.order-marker.sl { border-color:#7a2418; color:#7a2418; }
+.order-marker .label{
+  position:absolute; right:0; top:-5px; padding:0 2px;
+  background:rgba(255,250,210,.7); font-variant-numeric:tabular-nums;
+}
+
+/* ======= Generic card ======= */
+.card{
+  position:relative;
+  border:1px solid rgba(70,55,15,.35);
+  border-radius:5px;
+  padding:10px 16px 10px;
+  display:flex; flex-direction:column;
+  box-shadow:
+    0 1px 0 rgba(255,250,220,.55) inset,
+    0 0 0 1px rgba(255,245,210,.25) inset,
+    0 10px 14px -8px rgba(0,0,0,.45),
+    0 3px 6px -2px rgba(0,0,0,.35);
+  overflow:hidden;
+  isolation:isolate;
+  background-color:var(--paper-yellow);
+  background-image:
+    radial-gradient(ellipse 70% 50% at 30% 0%, rgba(255,250,220,.85), transparent 70%),
+    radial-gradient(ellipse 90% 60% at 70% 100%, rgba(180,160,90,.35), transparent 70%);
+}
+/* Card guilloche overlay intentionally removed — texture lives on the table only.
+   Cards are clean cream paper with their radial gradients + vignette below. */
+.card.peach{
+  background-color:var(--paper-peach);
+  background-image:
+    radial-gradient(ellipse 70% 50% at 30% 0%, rgba(255,235,215,.9), transparent 70%),
+    radial-gradient(ellipse 90% 60% at 70% 100%, rgba(190,130,90,.45), transparent 70%);
+}
+.card.blush{
+  background-color:var(--paper-blush);
+  background-image:
+    radial-gradient(ellipse 70% 50% at 30% 0%, rgba(255,240,220,.85), transparent 70%),
+    radial-gradient(ellipse 90% 60% at 70% 100%, rgba(180,140,100,.40), transparent 70%);
+}
+.card.blue{
+  background-color:var(--paper-blue);
+  background-image:
+    radial-gradient(ellipse 70% 50% at 30% 0%, rgba(225,235,235,.9), transparent 70%),
+    radial-gradient(ellipse 90% 60% at 70% 100%, rgba(80,120,120,.35), transparent 70%);
+}
+.card::after{
+  content:""; position:absolute; inset:0; pointer-events:none; border-radius:5px; z-index:0;
+  background: radial-gradient(ellipse 100% 100% at 50% 50%, transparent 60%, rgba(80,60,15,.18) 100%);
+}
+.card.hilite{
+  border-color:var(--rust);
+  box-shadow:
+    0 0 0 2px var(--rust),
+    0 1px 0 rgba(255,250,220,.55) inset,
+    0 10px 14px -8px rgba(0,0,0,.45),
+    0 3px 6px -2px rgba(0,0,0,.35);
+}
+.card > *{ position:relative; z-index:1; }
+
+.help{
+  position:absolute; top:4px; right:8px; z-index:3;
+  font-family:'IM Fell English',serif; font-style:italic; color:#6b5e1d; font-size:14px;
+}
+.title{
+  font-family:'IM Fell English SC', serif;
+  text-align:center; font-size:15px; color:#2a2818; letter-spacing:.06em;
+  text-transform:uppercase;
+  padding:0 14px 5px;
+  border-bottom:1px solid rgba(80,70,30,.3);
+}
+.body{ flex:1; display:flex; flex-direction:column; padding-top:6px; min-height:0; }
+
+.meta-row{
+  display:flex; justify-content:space-between; align-items:baseline;
+  margin-top:auto; padding-top:6px; border-top:1px dashed rgba(60,50,20,.45);
+}
+.meta-row .label{
+  font-family:'IM Fell English SC', serif; letter-spacing:.06em; font-size:13px; color:#2a2818;
+  text-transform:uppercase; display:flex; align-items:center; gap:5px;
+}
+.meta-row .value{
+  font-family:'IM Fell DW Pica', serif; font-size:22px; color:#2a2818;
+  font-variant-numeric: tabular-nums;
+}
+.meta-row .value.dn{ color: var(--rust-deep); }
+.meta-row .value.up{ color: var(--gold-deep); }
+
+.btn-row{ display:flex; justify-content:space-between; align-items:center; margin-top:8px; gap:8px; }
+.btn{
+  display:inline-block;
+  font-family:'IM Fell English',serif; font-style:italic; font-size:13px; color:#2a2818;
+  background:linear-gradient(180deg,#efe4b5 0%, #d8c986 100%);
+  border:1px solid #8b7e3f; border-radius:3px;
+  padding:1px 16px; cursor:pointer; line-height:1.4;
+  box-shadow:0 1px 0 rgba(255,250,210,.55) inset, 0 1px 0 rgba(0,0,0,.18);
+  transition: filter .12s ease;
+}
+.btn:hover{ filter: brightness(1.06); }
+.btn:disabled{ opacity:.38; cursor:not-allowed; box-shadow:none; }
+.btn.sm{ font-size:12px; padding:0 12px; }
+
+.lbl-sort::before{
+  content:""; display:inline-block; width:6px; height:6px; background:#6b5e1d;
+  transform:rotate(45deg); margin-right:5px; position:relative; top:-1px;
+}
+
+/* ============ Row 1 cards ============ */
+.card.savings, .card.cd, .card.index{ height:200px; }
+
+.savings .bank-wrap{ flex:1; display:flex; align-items:center; justify-content:center; }
+.savings .bank{ display:block; }
+
+.cd-coins{ display:flex; justify-content:center; align-items:center; gap:10px; flex:1; }
+.coin{
+  width:60px; height:60px; border-radius:50%;
+  background:radial-gradient(circle at 38% 30%, #c4b95a 0%, #94892b 60%, #5d551a 100%);
+  box-shadow: inset 0 -3px 6px rgba(0,0,0,.4), 0 1px 0 rgba(255,250,210,.4);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  font-family:'IM Fell DW Pica',serif; font-size:11px; color:#2a2818; line-height:1;
+  text-align:center; cursor: pointer;
+}
+.coin .amt{ font-variant-numeric:tabular-nums; }
+.coin .collect{
+  font-family:'IM Fell English',serif; font-style:italic; font-size:12px; color:#2a2818;
+  text-decoration:underline; text-decoration-style:dotted; margin-top:3px;
+}
+.coin.pending{ opacity:.92; cursor:default; }
+.coin.pending .collect{ text-decoration:none; font-style:normal; font-size:10px; color:#3d3a25; }
+.coin.empty{
+  background: radial-gradient(circle at 38% 30%, #d2c89a 0%, #aca57c 60%, #76714a 100%);
+  opacity:.55;
+}
+.coin.empty .collect{ text-decoration:none; }
+
+.big-chart{ flex:1; padding:6px 0; min-height:0; }
+.big-chart svg{ width:100%; height:100%; display:block; }
+
+/* ============ Stocks band (full-width row) ============ */
+.card.stocks-band{
+  grid-column:1 / span 3;
+  padding:10px 14px; height:220px;
+}
+.stocks-grid{
+  display:grid; grid-template-columns:repeat(5,1fr); gap:10px; flex:1; margin-top:6px; min-height:0;
+}
+.ministock{
+  position:relative;
+  background-color:#ebe1ad;
+  background-image:
+    radial-gradient(ellipse 70% 50% at 30% 0%, rgba(255,250,220,.8), transparent 70%),
+    radial-gradient(ellipse 90% 60% at 70% 100%, rgba(180,160,90,.3), transparent 70%);
+  border:1px solid rgba(70,55,15,.45); border-radius:4px;
+  padding:5px 8px 5px; display:flex; flex-direction:column;
+  box-shadow:0 1px 0 rgba(255,250,220,.6) inset, 0 2px 4px rgba(0,0,0,.18);
+  isolation:isolate;
+  min-height: 0;
+}
+.ministock.has-popover{ z-index:30; }
+.card.has-popover{ overflow:visible; z-index:30; }
+/* MiniStock guilloche removed — clean paper. */
+.ministock > *{ position:relative; z-index:1; }
+.ministock.hilite{
+  border-color:var(--rust);
+  box-shadow: 0 0 0 2px var(--rust), 0 1px 0 rgba(255,250,210,.6) inset;
+}
+.ministock .mname{
+  font-family:'IM Fell English SC',serif; font-size:12.5px; letter-spacing:.04em;
+  text-transform:uppercase; font-weight:600;
+  text-align:center; color:#2a2818; padding-bottom:3px;
+  border-bottom:1px solid rgba(60,50,20,.3);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  flex-shrink:0;
+}
+.ministock .pr{ display:flex; justify-content:space-between; align-items:baseline; padding:3px 0 1px; }
+.ministock .pr .price{
+  font-family:'IM Fell DW Pica',serif; font-size:14px; color:var(--rust-deep);
+  font-variant-numeric:tabular-nums;
+}
+.ministock .pr .delta{
+  font-family:'IM Fell DW Pica',serif; font-size:13px; color:var(--rust-deep);
+  font-variant-numeric:tabular-nums;
+}
+.ministock.up .pr .price{ color:var(--gold-deep); }
+.ministock.up .pr .delta{ color:var(--gold-deep); }
+.ministock .pr .delta.dn::before{ content:"▼"; font-size:8px; margin-right:3px; color:var(--rust-deep); }
+.ministock .pr .delta.up::before{ content:"▲"; font-size:8px; margin-right:3px; color:var(--gold-deep); }
+.ministock .plbl{
+  font-family:'IM Fell English SC',serif; font-size:11px; letter-spacing:.06em; text-align:center;
+  color:#2a2818; text-transform:uppercase;
+  display:flex; align-items:center; justify-content:center; gap:4px; margin-top:1px;
+}
+.ministock .pval{
+  font-family:'IM Fell DW Pica',serif; font-size:15px; text-align:center; color:#2a2818; line-height:1.05;
+  font-variant-numeric:tabular-nums;
+}
+.ministock .chartbox{ position:relative; height:30px; margin:2px 0 1px; }
+.ministock .chartbox svg{ width:100%; height:100%; display:block; }
+.ministock .shares{
+  position:absolute; right:0; top:-1px;
+  font-family:'IM Fell English',serif; font-size:11px; color:#2a2818; line-height:1.05; text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+.ministock .btns{ display:flex; justify-content:space-between; gap:6px; margin-top:3px; }
+.ministock .btns .btn{ flex:1; text-align:center; padding:0 4px; font-size:11px; }
+.ministock .qty{
+  display:flex; justify-content:space-between; align-items:baseline;
+  font-family:'IM Fell DW Pica',serif; font-size:11px; color:#2a2818;
+  margin-top:3px; border-top:1px dotted rgba(60,50,20,.4); padding-top:3px;
+}
+.ministock .qty button{ padding:0; line-height:1; transition: color .15s ease; }
+.ministock .qty button.armed{ color:var(--rust-deep); font-weight:600; }
+.ministock .qty .max{ font-weight:400; }
+
+/* ============ Row 3 cards ============ */
+.card.bonds, .card.wheat, .card.gold{ height:198px; }
+
+.pie-row{ display:flex; justify-content:center; gap:30px; margin-top:8px; align-items:flex-end; flex:1; }
+.pie-wrap{ display:flex; flex-direction:column; align-items:center; gap:2px; }
+.pie-amt{ font-family:'IM Fell DW Pica',serif; font-size:13px; color:#2a2818; font-variant-numeric:tabular-nums; }
+.pie{
+  width:64px; height:64px; border-radius:50%;
+  box-shadow:inset 0 -3px 6px rgba(0,0,0,.25);
+  border:1px solid #6b5e1d;
+}
+.single-buy{ display:flex; justify-content:center; gap:8px; margin-top:6px; }
+
+.wheat-stats{ display:flex; justify-content:space-between; align-items:baseline; padding:4px 4px 0; }
+.wheat-stats .price{
+  font-family:'IM Fell DW Pica',serif; font-size:17px; color:var(--gold-deep);
+  font-variant-numeric:tabular-nums;
+}
+.wheat-stats .price.dn{ color:var(--rust-deep); }
+.wheat-stats .delta{
+  font-family:'IM Fell DW Pica',serif; font-size:14px; color:var(--gold-deep);
+  display:flex; align-items:center; gap:3px;
+  font-variant-numeric:tabular-nums;
+}
+.wheat-stats .delta.up::before{ content:"▲"; font-size:9px; color:var(--gold-deep); }
+.wheat-stats .delta.dn::before{ content:"▼"; font-size:9px; color:var(--rust-deep); }
+.wheat-stats .delta.dn{ color:var(--rust-deep); }
+.wheat .chart-area{ flex:1; position:relative; margin:0 -6px; min-height:0; }
+.wheat .chart-area svg{ width:100%; height:100%; display:block; }
+.wheat .shares-tag{
+  position:absolute; right:8px; top:6px;
+  font-family:'IM Fell English',serif; font-size:12px; color:#2a2818;
+  font-variant-numeric:tabular-nums;
+}
+
+.qty-line{
+  display:flex; align-items:center; gap:14px;
+  font-family:'IM Fell DW Pica',serif; font-size:12px; color:#2a2818;
+  margin-top:6px;
+}
+.qty-line .nums{ display:flex; gap:14px; }
+.qty-line .nums button{ padding:0; line-height:1; transition: color .15s ease; }
+.qty-line .nums button.armed{ color:var(--rust-deep); font-weight:600; }
+.qty-line .right{ margin-left:auto; display:flex; gap:8px; }
+
+.gold .chart-area{ flex:1; margin:6px -6px 0; min-height:0; }
+.gold .chart-area svg{ width:100%; height:100%; display:block; }
+
+/* ----- Inline numpad ----- */
+.numpad{ display:flex; align-items:center; gap:6px; margin-top:6px; }
+.numpad input{
+  flex:1; min-width:0; padding:2px 8px;
+  border:1px solid #8b7e3f; background:rgba(255,250,210,.6); color:#2a2818;
+  font-family:'IM Fell DW Pica',serif; font-size:13px; border-radius:3px;
+  font-variant-numeric:tabular-nums;
+}
+
+/* ----- Lobby & end overlay ----- */
+.overlay{
+  position:fixed; inset:0; background:rgba(15,16,12,.78);
+  display:grid; place-items:center; padding:24px; z-index:100;
+  backdrop-filter: blur(6px);
+}
+.overlay-card{
+  width:min(440px, 100%); position:relative;
+  border:1px solid rgba(70,55,15,.35); border-radius:6px;
+  padding:28px 28px 26px;
+  box-shadow:0 24px 48px -16px rgba(0,0,0,.6);
+  color:#2a2818;
+  background-color:var(--paper-yellow);
+  background-image:
+    radial-gradient(ellipse 70% 50% at 30% 0%, rgba(255,250,220,.85), transparent 70%),
+    radial-gradient(ellipse 90% 60% at 70% 100%, rgba(180,160,90,.35), transparent 70%);
+  overflow:hidden; isolation:isolate;
+}
+/* Overlay-card guilloche removed. */
+.overlay-card > *{ position:relative; z-index:1; }
+.overlay-card h1{
+  font-family:'IM Fell DW Pica',serif; font-weight:400; font-size:38px; letter-spacing:.06em;
+  text-align:center; margin-bottom:4px;
+}
+.overlay-card .subtitle{
+  text-align:center; font-style:italic; font-size:14px; color:#4a4732; margin-bottom:18px;
+}
+.overlay-card .field-label{
+  font-family:'IM Fell English SC',serif; font-size:12px; letter-spacing:.08em; color:#4a4732;
+  text-transform:uppercase;
+}
+.input-line{
+  width:100%; padding:4px 4px; border:0; border-bottom:1px solid #8b7e3f;
+  background:transparent; font-family:'IM Fell DW Pica',serif; font-size:18px; color:#2a2818;
+}
+.input-line:focus{ outline:0; border-bottom-color:#2a2818; }
+.toggle-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.toggle-opt{
+  text-align:left; padding:10px 12px; border:1px solid #8b7e3f; border-radius:3px;
+  background:rgba(255,255,255,.18); color:#2a2818; font-family:'IM Fell English',serif;
+  cursor:pointer;
+}
+.toggle-opt.active{ background:#2e3023; color:#ece4ad; border-color:#2e3023; }
+.toggle-opt .ttl{ font-family:'IM Fell English SC',serif; font-size:13px; letter-spacing:.06em; }
+.toggle-opt .sub{ font-style:italic; font-size:12px; opacity:.85; }
+
+.avatar-row{ display:flex; flex-wrap:wrap; gap:6px; }
+.avatar-row button{
+  width:34px; height:34px; font-size:18px; border:1px solid #8b7e3f; border-radius:3px;
+  background:rgba(255,255,255,.18); cursor:pointer;
+}
+.avatar-row button.active{ background:#2e3023; border-color:#2e3023; }
+
+.cta{
+  width:100%; margin-top:18px; padding:11px;
+  background:#2e3023; color:#ece4ad;
+  font-family:'IM Fell English SC',serif; letter-spacing:.14em; font-size:13px;
+  border:0; border-radius:3px; cursor:pointer;
+}
+.cta:hover{ background:#3a3c2c; }
+
+/* Number-flash hints */
+@keyframes flashUp   { 0%{ color:var(--gold-deep);} 100%{ color:inherit;} }
+@keyframes flashDown { 0%{ color:var(--rust-deep);} 100%{ color:inherit;} }
+.flash-up   { animation: flashUp   500ms ease-out 1; }
+.flash-down { animation: flashDown 500ms ease-out 1; }
