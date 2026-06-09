@@ -8,8 +8,9 @@ from . import settings as S
 from . import assets
 from . import ui
 from .world import TileMap
-from .entities import Player, NPC, Guard, Supply, Pebble
+from .entities import Player, NPC, Guard, Supply, Pebble, Bullet, Enemy
 from .scenes import all_scenes
+from . import act2
 from .save import SaveManager
 
 # human-readable location labels for the save menu
@@ -29,6 +30,12 @@ SPEAKERS = {
     "Mr. Ankam":   ("ankam", S.ANKAM_BODY),
     "Villager":   ("villager0", S.GREY),
     "Nervous Villager": ("villager2", (150, 160, 150)),
+    "Shopkeeper": ("shopkeep", S.SHOPKEEP_BODY),
+    "Court Herald": ("herald", S.HERALD_BODY),
+    "Captive":    ("villager3", (170, 150, 130)),
+    "Loudspeaker Cart": (None, S.WARN),
+    "Cheer Warden": ("pikeman", S.PIKEMAN_BODY),
+    "Sufflok":    (None, S.SUFFLOK_RED),
     "???":        (None, S.EERIE),
     "The Note":   (None, S.EERIE),
 }
@@ -112,6 +119,7 @@ class Game:
 
         # weapon (the Sling)
         self.pebbles = []
+        self.ammo_max = S.PEBBLE_MAX
         self.ammo = S.PEBBLE_MAX
         self.fire_cd = 0.0
 
@@ -122,6 +130,17 @@ class Game:
         self.gate_barrier = None
         self.gate_open = True
         self.exit_x = 0
+
+        # Act Two: projectile combat, economy, inventory
+        self.enemies = []
+        self.bullets = []
+        self.chits = 0
+        self.inv = {"bandage": 0, "smokebead": 0}
+        self.smoke_t = 0.0            # active smokebead invisibility timer
+        self.arena = None            # live wave-spawner state (dict) or None
+        self.boss = None             # live boss (Court Herald) or None
+        self.shop_items = []
+        self.act2_state = {}         # misc Act Two flags/objects
 
         # menus + saves
         base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -187,7 +206,7 @@ class Game:
         self.alert_timer = 0.0
         self.noise_pings = []
         self.pebbles = []
-        self.ammo = S.PEBBLE_MAX          # a fresh handful of pebbles each zone
+        self.ammo = self.ammo_max         # a fresh handful of pebbles each zone
         self.fire_cd = 0.0
         if self.player is not None:
             self.player.stamina = S.STAMINA_MAX
@@ -201,6 +220,12 @@ class Game:
         self.gate_barrier = None
         self.gate_open = True
         self.exit_x = 0
+        # combat state resets each scene (chits/inventory persist on self)
+        self.enemies = []
+        self.bullets = []
+        self.smoke_t = 0.0
+        self.arena = None
+        self.boss = None
 
         if name == "village":
             self._populate_village()
@@ -208,6 +233,8 @@ class Game:
             self._populate_depot(data)
         elif name == "escape":
             self._populate_escape(data)
+        elif data.get("act") == 2:
+            act2.populate(self, name, data)
 
         self._update_camera(snap=True)
 
@@ -260,15 +287,18 @@ class Game:
         cx, cy = self._tile_feet(*data["captain"])
         cap = Guard(self.actors["guard"], cx, cy, [(cx, cy)], "Captain")
         cap.captain = True
-        cap.chase_speed = 2.34
+        cap.chase_speed = S.CAPTAIN_CHASE_SPEED
         cap.mode = "chase"
         cap.target = (cx, cy)
+        cap.stagger_lock = 0.0        # >0 = can't be staggered again yet
         self.captain = cap
         self.guards.append(cap)
         for gdef in data["guards"]:
             wpts = [self._tile_feet(x, y) for (x, y) in gdef["path"]]
             gx, gy = self._tile_feet(gdef["x"], gdef["y"])
-            self.guards.append(Guard(self.actors["guard"], gx, gy, wpts, "Guard"))
+            gd = Guard(self.actors["guard"], gx, gy, wpts, "Guard")
+            gd.chase_speed = 2.28     # catchable: stun them or dash clear
+            self.guards.append(gd)
         vx, vy = self._tile_feet(*data["caged"])
         cv = NPC(self.actors["villager1"], vx, vy, "Caged Villager")
         cv.kind = "caged"
@@ -354,6 +384,12 @@ class Game:
             self._try_dash()
         elif key in (pygame.K_f, pygame.K_j):
             self._fire(None)
+        elif key in (pygame.K_TAB, pygame.K_i):
+            self._open_inventory()
+        elif key == pygame.K_1:
+            self._use_item("bandage")
+        elif key == pygame.K_2:
+            self._use_item("smokebead")
 
     # --------------------------------------------------------------- update
     def update(self, dt):
@@ -384,6 +420,9 @@ class Game:
             return
 
         # ---- play ----
+        if self.scene is None or self.tmap is None:
+            self._update_fade(dt)
+            return
         self.dialogue.update(dt)
         self._update_fade(dt)
         for s in self.supplies:
@@ -418,6 +457,12 @@ class Game:
                 for g in self.guards:
                     g.update(dt, self.tmap)
                 self._update_escape(dt)
+        elif self.scene_data[self.scene].get("act") == 2:
+            self._update_bullets(dt)
+            if self.smoke_t > 0:
+                self.smoke_t = max(0.0, self.smoke_t - dt)
+            if controllable:
+                act2.update(self, dt)
         self._update_camera()
         self._update_interact_target()
 
@@ -496,6 +541,9 @@ class Game:
         world = (pos[0] + self.cam[0], pos[1] + self.cam[1])
         self._fire(world)
 
+    def _pebble_damage(self):
+        return S.WHIPCORD_DAMAGE if "whipcord" in self.flags else S.PEBBLE_DAMAGE
+
     def _update_pebbles(self, dt):
         if self.fire_cd > 0:
             self.fire_cd -= dt
@@ -503,16 +551,55 @@ class Game:
             p.update(dt, self.tmap)
             if p.dead:
                 continue
+            # combat enemies (Act Two) — pebbles deal damage, KO at 0
+            hit = False
+            for e in self.enemies:
+                if e.ko:
+                    continue
+                if math.hypot(e.x - p.x, e.y - p.y) < 16:
+                    downed = e.take_hit(self._pebble_damage())
+                    p.dead = True
+                    hit = True
+                    self.shake = max(self.shake, 3.0)
+                    self.audio.play("hurt", 0.4)
+                    if downed:
+                        self._on_enemy_downed(e)
+                    break
+            if hit:
+                continue
+            # boss (Court Herald) takes pebble damage
+            if self.boss is not None and not getattr(self.boss, "down", False):
+                if math.hypot(self.boss.x - p.x, self.boss.y - p.y) < getattr(self.boss, "r", 18):
+                    p.dead = True
+                    self.shake = max(self.shake, 3.0)
+                    self.audio.play("hurt", 0.4)
+                    self.boss.take_hit(self, self._pebble_damage())
+                    continue
+            # Act One guards & the Captain — pebbles stun / stagger
             for g in self.guards:
                 if g.mode == "stunned":
                     continue
                 if math.hypot(g.x - p.x, g.y - p.y) < 17:
-                    g.mode = "stunned"
-                    g.stun_t = S.GUARD_STUN_TIME
                     p.dead = True
                     self.shake = max(self.shake, 4.0)
-                    self.audio.play("hurt", 0.45)
-                    self.toast.push("Stunned a guard. Slip past while it reels.", S.EERIE, 1.4)
+                    if getattr(g, "captain", False):
+                        # the Captain CAN be staggered — just not chain-locked
+                        if getattr(g, "stagger_lock", 0.0) > 0:
+                            self.audio.play("ui_move", 0.3)
+                            self.toast.push("The Captain shrugs it off — wait for the next opening.",
+                                            S.WARN, 1.2)
+                        else:
+                            g.mode = "stunned"
+                            g.stun_t = S.CAPTAIN_STAGGER_TIME
+                            g.stagger_lock = S.CAPTAIN_STAGGER_TIME + S.CAPTAIN_STAGGER_LOCK
+                            self.audio.play("hurt", 0.5)
+                            self.toast.push("STAGGERED the Captain! Sprint for the gap — NOW!",
+                                            S.GOLD, 1.6)
+                    else:
+                        g.mode = "stunned"
+                        g.stun_t = S.GUARD_STUN_TIME
+                        self.audio.play("hurt", 0.45)
+                        self.toast.push("Stunned a guard. Slip past while it reels.", S.EERIE, 1.4)
                     break
         for p in self.pebbles:
             if p.dead and p.hit_wall:
@@ -529,6 +616,40 @@ class Game:
                         best.mode = "investigate"
                         best.target = (p.x, p.y)
         self.pebbles = [p for p in self.pebbles if not p.dead]
+
+    # ------------------------------------------------------- projectile combat
+    def _fire_bullet(self, x, y, vx, vy, color=None, r=None, dmg=1):
+        self.bullets.append(Bullet(x, y, vx, vy, r=r, dmg=dmg, color=color))
+
+    def _update_bullets(self, dt):
+        for b in self.bullets:
+            b.update(dt, self.tmap)
+            if b.dead:
+                continue
+            if (self.invuln <= 0 and not self.dead and not self.player.dashing
+                    and math.hypot(b.x - self.player.x, b.y - self.player.y) < b.r + 9):
+                b.dead = True
+                self._hit_player(b.dmg, b.x, b.y)
+        self.bullets = [b for b in self.bullets if not b.dead]
+
+    def _update_enemies(self, dt):
+        if self.smoke_t > 0:
+            return                      # smokebead: enemies lose track of you
+        for e in self.enemies:
+            e.update(dt, self.tmap, self.player, self._fire_bullet)
+            if not e.ko and math.hypot(e.x - self.player.x, e.y - self.player.y) < 16:
+                self._hit_player(e.contact_dmg, e.x, e.y)
+                if self.dead:
+                    return
+
+    def _on_enemy_downed(self, e):
+        if e.awarded:
+            return
+        e.awarded = True
+        self.chits += S.KO_CHITS
+        self.ammo = min(self.ammo_max, self.ammo + 2)   # scavenge pebbles
+        self.audio.play("pickup", 0.5)
+        self.toast.push("Knocked out. +%d chits, +2 pebbles." % S.KO_CHITS, S.CHIT_COL, 1.3)
 
     # --------------------------------------------------------------- camera
     def _update_camera(self, snap=False):
@@ -555,6 +676,12 @@ class Game:
                 if tr.get("needs_brief") and "mission_briefed" not in self.flags:
                     self.toast.push("Not yet. Rook is waiting for you.", S.ROOK_BODY)
                     self.player.x -= 6  # nudge back
+                    return
+                if tr.get("needs") and tr["needs"] not in self.flags:
+                    msg = act2.gate_message(self, tr["needs"]) if hasattr(act2, "gate_message") else None
+                    self.toast.push(msg or "The way is barred.", S.WARN)
+                    self.player.x -= 8
+                    self.player.y -= 0
                     return
                 self._do_transition(tr["to"], tr["spawn"])
                 return
@@ -592,9 +719,12 @@ class Game:
             self.objective = "Head east. The road leads to the village."
         elif to == "escape":
             self.quest = "escape"
-            self.objective = "RUN east. Reach the far gate. Open the road. Don't let the Captain reach you."
-            self.toast.push("You can't kill the Captain. Outrun him — dash through the gaps.",
-                            S.ALARM, 4.2)
+            self.objective = ("RUN east. Open the gate at the cage, then break for the road. "
+                              "Sling the Captain to STAGGER him — you can't kill him, only slow him.")
+            self.toast.push("Can't kill the Captain. STAGGER him with the sling, dash the gaps, RUN.",
+                            S.ALARM, 4.5)
+        elif self.scene_data.get(to, {}).get("act") == 2:
+            act2.enter(self, prev, to)
         self._autosave()
 
     def tint_path(self):
@@ -613,6 +743,8 @@ class Game:
             cands.append(("npc", n, n.x, n.y))
         for (sx, sy) in self.signs:
             cands.append(("sign", (sx, sy), sx, sy))
+        for pt in self.act2_state.get("points", []):
+            cands.append(("act2pt", pt, pt["x"], pt["y"]))
         for kind, obj, ox, oy in cands:
             d = math.hypot(ox - self.player.x, oy - self.player.y)
             if d < bestd:
@@ -627,11 +759,16 @@ class Game:
         if kind == "sign":
             self.say([self.L("???", "A faded notice, half scorched: 'ALL JOY BY PERMIT ONLY. "
                              "BY ORDER OF LORD SUFFLOK.' Someone scratched 'liar' beneath it.")])
+        elif kind == "act2pt":
+            act2.talk_point(self, obj)
         elif kind == "npc":
             self._talk_npc(obj)
 
     def _talk_npc(self, npc):
         npc.face_to(self.player.x, self.player.y)
+        if getattr(npc, "act2", False):
+            act2.talk(self, npc)
+            return
         if npc.kind == "rook":
             if self.quest in ("meet",) and "met_rook" not in self.flags:
                 self._begin_meet_rook()
@@ -779,6 +916,16 @@ class Game:
         if self.hp <= 0:
             self.hp = 0
             self._game_over()
+
+    def _shove_guard(self, g, dist):
+        """Push a guard directly away from the player (wall-aware-ish)."""
+        dx, dy = g.x - self.player.x, g.y - self.player.y
+        m = math.hypot(dx, dy) or 1
+        ux, uy = dx / m * dist, dy / m * dist
+        r = pygame.Rect(int(g.x + ux - g.w / 2), int(g.y + uy - g.h), g.w, g.h)
+        if not self.tmap.rect_blocked(r):
+            g.x += ux
+            g.y += uy
 
     def _knockback(self, fromx, fromy, dist):
         dx, dy = self.player.x - fromx, self.player.y - fromy
@@ -940,6 +1087,86 @@ class Game:
             else:
                 self.audio.play("hurt", 0.4)
 
+    # ----------------------------------------------------- inventory + shop
+    ITEM_NAMES = {"bandage": "Bandage", "smokebead": "Smokebead"}
+
+    def _open_inventory(self):
+        if self.cutscene or self.dialogue.active:
+            return
+        items = []
+        items.append(("Bandage  x%d   (heal 2 hearts)   [1]" % self.inv.get("bandage", 0),
+                      (lambda: self._use_item("bandage")) if self.inv.get("bandage", 0) else None))
+        items.append(("Smokebead x%d  (vanish 3s)        [2]" % self.inv.get("smokebead", 0),
+                      (lambda: self._use_item("smokebead")) if self.inv.get("smokebead", 0) else None))
+        items.append(("Close", self._close_menu))
+        sl = "Whipcord Sling" if "whipcord" in self.flags else "Sling"
+        note = "%s  ·  pebbles %d/%d  ·  chits %d" % (sl, self.ammo, self.ammo_max, self.chits)
+        self.menu = dict(title="INVENTORY", items=items, sel=0,
+                         on_cancel=self._close_menu, note=note, danger=False)
+
+    def _use_item(self, item):
+        if self.inv.get(item, 0) <= 0:
+            return
+        if item == "bandage":
+            if self.hp >= self.max_hp:
+                self.toast.push("Already at full hearts.", S.GREY, 1.2)
+                return
+            self.hp = min(self.max_hp, self.hp + 2)
+            self.audio.play("save", 0.5)
+            self.toast.push("Patched up. +2 hearts.", S.HEART, 1.4)
+        elif item == "smokebead":
+            self.smoke_t = 3.0
+            self.audio.play("portal", 0.4)
+            self.toast.push("Smoke! You're hard to see for a moment.", S.EERIE, 1.6)
+        self.inv[item] -= 1
+        if self.menu is not None:
+            self._open_inventory()       # refresh the open inventory menu
+
+    def open_shop(self, items, on_close=None):
+        """items: list of dict(id, name, cost, effect, flavor)."""
+        self.shop_items = items
+        self._shop_on_close = on_close
+        self._refresh_shop()
+
+    def _refresh_shop(self):
+        rows = []
+        for it in self.shop_items:
+            owned = ""
+            if it["effect"] == "whipcord" and "whipcord" in self.flags:
+                owned = "  (owned)"
+            label = "%-22s %3d ch  -  %s%s" % (it["name"], it["cost"], it.get("flavor", ""), owned)
+            afford = self.chits >= it["cost"] and not (it["effect"] == "whipcord" and "whipcord" in self.flags)
+            rows.append((label, (lambda i=it: self._buy(i)) if afford else None))
+        rows.append(("Leave", self._shop_close))
+        self.menu = dict(title="THE WEIRD SHOPKEEPER", items=rows, sel=0,
+                         on_cancel=self._shop_close, danger=False,
+                         note="chits: %d   (Z buy · Esc leave)" % self.chits)
+
+    def _buy(self, it):
+        if self.chits < it["cost"]:
+            self.audio.play("hurt", 0.4)
+            return
+        self.chits -= it["cost"]
+        eff = it["effect"]
+        if eff == "bandage":
+            self.inv["bandage"] = self.inv.get("bandage", 0) + 1
+        elif eff == "smokebead":
+            self.inv["smokebead"] = self.inv.get("smokebead", 0) + 1
+        elif eff == "pebble_pouch":
+            self.ammo_max += 4
+            self.ammo = self.ammo_max
+        elif eff == "whipcord":
+            self.flags.add("whipcord")
+        self.audio.play("ui_ok", 0.7)
+        self.toast.push("Bought %s." % it["name"], S.CHIT_COL, 1.4)
+        self._refresh_shop()
+
+    def _shop_close(self):
+        self.menu = None
+        cb, self._shop_on_close = getattr(self, "_shop_on_close", None), None
+        if cb:
+            cb()
+
     # --------------------------------------------------- supply pickup check
     def _check_supply_pickup(self):
         for i, s in enumerate(self.supplies):
@@ -961,8 +1188,12 @@ class Game:
     def _update_escape(self, dt):
         cap = self.captain
         if cap:
-            cap.mode = "chase"
-            cap.target = (self.player.x, self.player.y)
+            if getattr(cap, "stagger_lock", 0.0) > 0:
+                cap.stagger_lock -= dt
+            # only resume the hunt once he's done reeling — a stagger now STICKS
+            if cap.mode != "stunned":
+                cap.mode = "chase"
+                cap.target = (self.player.x, self.player.y)
         for g in self.guards:
             if g is cap or g.mode == "stunned":
                 continue
@@ -976,9 +1207,18 @@ class Game:
             if g.mode == "stunned":
                 continue
             if math.hypot(g.x - self.player.x, g.y - self.player.y) < 18:
+                if self.invuln > 0 or (self.player and self.player.dashing):
+                    continue
                 self._hit_player(S.GUARD_TOUCH_DAMAGE, g.x, g.y)
                 if self.dead:
                     return
+                # whoever lands a hit recoils, so a touch never juggles you in
+                # place — you always get a clean window to break away.
+                is_cap = getattr(g, "captain", False)
+                self._shove_guard(g, S.CAPTAIN_TOUCH_RECOIL if is_cap else 22.0)
+                if is_cap:
+                    g.mode = "stunned"
+                    g.stun_t = S.CAPTAIN_TOUCH_STUN
         if "escape_done" not in self.flags and self.player.x > self.exit_x:
             self.flags.add("escape_done")
             self._finish_act_one()
@@ -1007,6 +1247,10 @@ class Game:
         if self.gate_barrier in self.extra_blockers:
             self.extra_blockers.remove(self.gate_barrier)
         self.audio.play("ui_ok", 0.5)
+        # the gate mechanism buys you a clean launch down the open road
+        if self.captain:
+            self.captain.mode = "stunned"
+            self.captain.stun_t = max(self.captain.stun_t, 1.0)
 
     def _remove_caged(self):
         if self.caged in self.npcs:
@@ -1041,7 +1285,7 @@ class Game:
         self._open_escape_gate()
         self._remove_caged()
         if self.captain:
-            self.captain.chase_speed = (self.captain.chase_speed or 2.34) + 0.5
+            self.captain.chase_speed = (self.captain.chase_speed or S.CAPTAIN_CHASE_SPEED) + 0.28
         self.say([
             self.L("You", "(You kick the cage toward the guards. They lunge for the easy prize. "
                    "The road clears.)"),
@@ -1210,8 +1454,11 @@ class Game:
             self.objective = "Head east. The road leads somewhere."
             self.quest = "intro"
         elif self.mode == "ending" and self.card_i >= len(self.cards):
-            self._reset_run()
-            self.start_title()
+            if "act_one_done" in self.flags and self.act == 1:
+                act2.start(self)          # flow straight into Act Two
+            else:
+                self._reset_run()
+                self.start_title()
 
     def _reset_run(self):
         self.moral = {S.MERCY: 0, S.SURVIVAL: 0, S.CRUELTY: 0}
@@ -1503,6 +1750,10 @@ class Game:
                 pygame.draw.circle(self.screen, (*S.WARN, a),
                                    (int(p[0] - cam[0]), int(p[1] - cam[1])), r, 2)
 
+        # Act Two ground hazards (spotlights) under the actors
+        if self.scene_data[self.scene].get("act") == 2:
+            act2.draw_ground(self, cam)
+
         # y-sorted actors + supplies
         draw_list = []
         for s in self.supplies:
@@ -1512,14 +1763,20 @@ class Game:
             draw_list.append((n.y, lambda n=n: n.draw(self.screen, cam)))
         for g in self.guards:
             draw_list.append((g.y, lambda g=g: self._draw_guard(g, cam)))
+        for e in self.enemies:
+            draw_list.append((e.y, lambda e=e: e.draw(self.screen, cam)))
+        if self.boss is not None:
+            draw_list.append((self.boss.y, lambda: self.boss.draw(self.screen, cam)))
         draw_list.append((self.player.y, lambda: self._draw_player(cam)))
         draw_list.sort(key=lambda t: t[0])
         for _, fn in draw_list:
             fn()
 
-        # pebbles fly above the actors
+        # pebbles + enemy bullets fly above the actors
         for p in self.pebbles:
             p.draw(self.screen, cam)
+        for b in self.bullets:
+            b.draw(self.screen, cam)
 
         # interact prompt
         self._draw_interact_prompt(cam)
@@ -1537,6 +1794,8 @@ class Game:
         if self.collected and self.scene == "depot":
             cs = self.fonts.small.render("Supplies %d/3" % self.collected, True, S.WARN)
             self.screen.blit(cs, (18, 134))
+        if self.scene_data[self.scene].get("act") == 2:
+            act2.draw_hud(self)
         ui.draw_moral(self.screen, self.fonts, self.moral)
 
         # overlays
@@ -1582,6 +1841,17 @@ class Game:
                                   int(self.player.y - 5 - cam[1])))
             return
         self.player.draw(self.screen, cam)
+        # smokebead cloud — you're hard to see
+        if self.smoke_t > 0:
+            px = int(self.player.x - cam[0])
+            py = int(self.player.y - 18 - cam[1])
+            for i in range(6):
+                a = i / 6 * math.tau + self.t * 2
+                rr = 10 + int(6 * math.sin(self.t * 3 + i))
+                puff = pygame.Surface((22, 22), pygame.SRCALPHA)
+                pygame.draw.circle(puff, (180, 188, 196, 120), (11, 11), 9)
+                self.screen.blit(puff, (px + int(math.cos(a) * rr) - 11,
+                                        py + int(math.sin(a) * rr * 0.6) - 11))
 
     def _draw_hearts(self):
         x0, y = 18, 72
@@ -1662,7 +1932,10 @@ class Game:
                                 [(cx, cy - 7), (cx - 4, cy + 2), (cx + 4, cy + 2)])
             pygame.draw.circle(self.screen, S.GOLD, (cx, cy + 1), 2)
         # alert mark
-        if g.mode == "chase" or self.alerted:
+        if getattr(g, "captain", False) and g.mode == "stunned":
+            mark = self.fonts.mid.render("*", True, S.GOLD)
+            self.screen.blit(mark, (int(g.x - cam[0] - 3), int(g.y - 56 - cam[1])))
+        elif g.mode == "chase" or self.alerted:
             mark = self.fonts.mid.render("!", True, S.ALARM)
             self.screen.blit(mark, (int(g.x - cam[0] - 3), int(g.y - 56 - cam[1])))
         elif g.mode in ("look", "investigate"):

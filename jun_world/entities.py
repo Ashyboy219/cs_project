@@ -188,6 +188,175 @@ class Pebble:
                            (int(self.x - cam[0]), int(self.y - 6 - cam[1])), 3, 1)
 
 
+class Bullet:
+    """An enemy projectile.  Honest, dodgeable, blocked by walls."""
+
+    def __init__(self, x, y, vx, vy, r=None, dmg=1, color=None):
+        self.x = float(x)
+        self.y = float(y)
+        self.vx = vx
+        self.vy = vy
+        self.r = r or S.ENEMY_BULLET_R
+        self.dmg = dmg
+        self.color = color or S.BULLET_COL
+        self.dead = False
+        self.t = 0.0
+
+    def update(self, dt, tmap):
+        self.t += dt
+        for _ in range(2):
+            nx = self.x + self.vx / 2
+            ny = self.y + self.vy / 2
+            if tmap.is_solid_px(nx, ny - 6):
+                self.dead = True
+                return
+            self.x, self.y = nx, ny
+        if self.t > 4.0:
+            self.dead = True
+
+    def draw(self, surf, cam):
+        x = int(self.x - cam[0])
+        y = int(self.y - 6 - cam[1])
+        glow = pygame.Surface((self.r * 4, self.r * 4), pygame.SRCALPHA)
+        pygame.draw.circle(glow, (*self.color, 70), (self.r * 2, self.r * 2), self.r * 2)
+        surf.blit(glow, (x - self.r * 2, y - self.r * 2))
+        pygame.draw.circle(surf, self.color, (x, y), self.r)
+        pygame.draw.circle(surf, S.BULLET_CORE, (x, y), max(1, self.r - 3))
+
+
+class Enemy(Character):
+    """A combat enemy.  Shooters keep distance and fire telegraphed volleys;
+    chargers rush; conductors hang back.  The Sling KOs them (non-lethal) — a
+    downed enemy stays as a sleeping body, never a corpse."""
+
+    def __init__(self, frames, x, y, role="shooter", hp=3, speed=1.2, name="Enemy"):
+        super().__init__(frames, x, y, name)
+        self.role = role
+        self.hp = hp
+        self.max_hp = hp
+        self.speed = speed
+        self.ko = False
+        self.ko_t = 0.0
+        self.telegraph = 0.0
+        self.hit_flash = 0.0
+        self.fire_cd = 0.8 + (abs(hash((int(x), int(y)))) % 80) / 100.0
+        self.fire_interval = 2.0
+        self.pattern = "aimed"
+        self.bcount = 8
+        self.bspeed = S.ENEMY_BULLET_SPEED
+        self.contact_dmg = 1
+        self.awarded = False
+        self.w = 16
+        self.h = 12
+
+    def take_hit(self, dmg):
+        if self.ko:
+            return False
+        self.hp -= dmg
+        self.hit_flash = 1.0
+        if self.hp <= 0:
+            self.hp = 0
+            self.ko = True
+            self.ko_t = 0.0
+            return True
+        return False
+
+    def update(self, dt, tmap, player, fire_cb):
+        if self.hit_flash > 0:
+            self.hit_flash = max(0.0, self.hit_flash - dt * 3)
+        if self.ko:
+            self.moving = False
+            self.ko_t += dt
+            return
+        dx, dy = player.x - self.x, player.y - self.y
+        dist = math.hypot(dx, dy) or 1
+        self.dir = _facing(dx, dy)
+        moved = False
+        if self.role == "charger":
+            if dist > 18:
+                self._move(dx / dist * self.speed, dy / dist * self.speed, tmap)
+                moved = True
+        elif self.role == "shooter":
+            desired = 156
+            if dist > desired + 36:
+                self._move(dx / dist * self.speed, dy / dist * self.speed, tmap)
+            elif dist < desired - 36:
+                self._move(-dx / dist * self.speed, -dy / dist * self.speed, tmap)
+            else:
+                self._move(-dy / dist * self.speed * 0.7, dx / dist * self.speed * 0.7, tmap)
+            moved = True
+        if self.role in ("shooter", "turret"):
+            if self.telegraph > 0:
+                self.telegraph -= dt
+                if self.telegraph <= 0:
+                    self._fire(player, fire_cb)
+            else:
+                self.fire_cd -= dt
+                if (self.fire_cd <= 0 and dist < 340
+                        and not tmap.line_blocked(self.x, self.y, player.x, player.y)):
+                    self.telegraph = S.ENEMY_TELEGRAPH
+                    self.fire_cd = self.fire_interval
+        self.moving = moved
+        self.update_anim(dt)
+
+    def _move(self, vx, vy, tmap):
+        r = pygame.Rect(int(self.x + vx - self.w / 2), int(self.y - self.h), self.w, self.h)
+        if not tmap.rect_blocked(r):
+            self.x += vx
+        r = pygame.Rect(int(self.x - self.w / 2), int(self.y + vy - self.h), self.w, self.h)
+        if not tmap.rect_blocked(r):
+            self.y += vy
+
+    def _fire(self, player, fire_cb):
+        dx, dy = player.x - self.x, player.y - self.y
+        a0 = math.atan2(dy, dx)
+        if self.pattern == "spread3":
+            angs = [a0 - 0.26, a0, a0 + 0.26]
+        elif self.pattern == "spread5":
+            angs = [a0 - 0.5, a0 - 0.25, a0, a0 + 0.25, a0 + 0.5]
+        elif self.pattern == "ring":
+            n = self.bcount or 8
+            angs = [a0 + i * 2 * math.pi / n for i in range(n)]
+        else:
+            angs = [a0]
+        for a in angs:
+            fire_cb(self.x, self.y, math.cos(a) * self.bspeed, math.sin(a) * self.bspeed)
+
+    def draw(self, surf, cam):
+        if self.ko:
+            spr = pygame.transform.rotate(self.frames[("down", 0)], 78)
+            sh = pygame.Surface((26, 9), pygame.SRCALPHA)
+            pygame.draw.ellipse(sh, (0, 0, 0, 90), (0, 0, 26, 9))
+            surf.blit(sh, (int(self.x - 13 - cam[0]), int(self.y - 5 - cam[1])))
+            g = spr.copy()
+            g.set_alpha(150)
+            surf.blit(g, (int(self.x - spr.get_width() / 2 - cam[0]),
+                          int(self.y - spr.get_height() / 2 - 2 - cam[1])))
+            zx = int(self.x + 8 - cam[0])
+            zy = int(self.y - 26 - cam[1] - (self.ko_t * 6) % 8)
+            pygame.draw.line(surf, S.GREY, (zx, zy), (zx + 4, zy), 1)
+            pygame.draw.line(surf, S.GREY, (zx + 4, zy), (zx, zy + 4), 1)
+            pygame.draw.line(surf, S.GREY, (zx, zy + 4), (zx + 4, zy + 4), 1)
+            return
+        if self.telegraph > 0:
+            x = int(self.x - cam[0])
+            y = int(self.y - 18 - cam[1])
+            r = int(6 + (1 - self.telegraph / S.ENEMY_TELEGRAPH) * 11)
+            pygame.draw.circle(surf, S.WARN, (x, y), r, 2)
+        Character.draw(self, surf, cam)
+        if self.hit_flash > 0.4:
+            x = int(self.x - cam[0])
+            y = int(self.y - 22 - cam[1])
+            fl = pygame.Surface((24, 34), pygame.SRCALPHA)
+            pygame.draw.ellipse(fl, (255, 255, 255, 120), (0, 0, 24, 34))
+            surf.blit(fl, (x - 12, y - 6))
+        if self.max_hp > 1:
+            x = int(self.x - cam[0] - (self.max_hp * 5) // 2)
+            y = int(self.y - 46 - cam[1])
+            for i in range(self.max_hp):
+                pygame.draw.rect(surf, S.ALARM if i < self.hp else S.INK, (x + i * 5, y, 4, 3))
+
+
 class NPC(Character):
     def __init__(self, frames, x, y, name, wander=False, face="down"):
         super().__init__(frames, x, y, name)

@@ -250,10 +250,115 @@ def scene_escape():
     )
 
 
+# ===========================================================================
+#  ACT TWO: The Theatrical Crown  (Twisted Castle Kingdom)
+# ===========================================================================
+def scene_k_gate():
+    """Arrival corridor + a tutorial skirmish that teaches projectile combat."""
+    w, h = 30, 16
+    g = blank(w, h, "m")
+    ring(g, "k")
+    for y in (7, 8):
+        hline(g, y, 1, w - 2, "c")
+    poke(g, [(8, 4), (8, 11), (14, 4), (14, 11), (20, 4), (20, 11)], "p")
+    g[7][0] = "g"
+    g[8][0] = "g"
+    g[7][w - 1] = "g"
+    g[8][w - 1] = "g"
+    return dict(
+        name="k_gate", act=2, tiles=rows_to_str(g), buildings=[],
+        decos=[("banner", 2, 2), ("banner", 2, 13), ("banner", 27, 2),
+               ("banner", 27, 13), ("mark", 24, 7)],
+        spawns={"from_escape": (2, 8), "start": (2, 8), "from_town": (27, 8)},
+        transitions=[dict(x=w - 1, y=6, w=1, h=4, to="k_town", spawn="from_gate")],
+        skirmish=[("pikeman", 18, 5), ("pikeman", 18, 10), ("charger", 23, 8)],
+        tint=(118, 100, 122),
+    )
+
+
+def scene_k_town():
+    """The court-town hub: shopkeeper, the Festival staging, Ankam, the decree."""
+    w, h = 40, 22
+    g = blank(w, h, "m")
+    ring(g, "k")
+    for y in (10, 11):
+        hline(g, y, 1, w - 2, "c")
+    vline(g, 20, 3, 18, "c")
+    poke(g, [(6, 5), (6, 16), (13, 5), (13, 16), (27, 5), (27, 16), (34, 5), (34, 16)], "p")
+    fill_rect(g, 16, 2, 24, 4, "s")        # the festival stage backdrop
+    g[10][0] = "g"
+    g[11][0] = "g"
+    g[10][w - 1] = "g"
+    g[11][w - 1] = "g"
+    return dict(
+        name="k_town", act=2, tiles=rows_to_str(g), buildings=[],
+        decos=[("banner", 3, 2), ("banner", 36, 2), ("banner", 3, 19),
+               ("banner", 36, 19), ("mark", 20, 14), ("barrel", 8, 13),
+               ("crate", 32, 13), ("well", 10, 16)],
+        spawns={"from_gate": (3, 11), "start": (3, 11), "from_arena": (36, 11)},
+        shop_at=(30, 7), ankam_at=(20, 6), decree_at=(14, 8), villager_at=(24, 13),
+        transitions=[dict(x=w - 1, y=9, w=1, h=4, to="k_arena", spawn="from_town",
+                          needs="act2_ankam")],
+        tint=(118, 100, 122),
+    )
+
+
+def scene_k_arena():
+    """A walled backstage arena: the big multi-wave projectile skirmish."""
+    w, h = 30, 20
+    g = blank(w, h, "m")
+    ring(g, "k")
+    poke(g, [(7, 5), (7, 14), (22, 5), (22, 14), (14, 9), (15, 9),
+             (10, 10), (19, 10), (14, 4), (15, 15)], "p")
+    g[9][0] = "g"
+    g[10][0] = "g"
+    g[9][w - 1] = "g"          # exit (held by a portcullis until the arena is cleared)
+    g[10][w - 1] = "g"
+    return dict(
+        name="k_arena", act=2, tiles=rows_to_str(g), buildings=[],
+        decos=[("banner", 2, 2), ("banner", 27, 2), ("banner", 2, 17),
+               ("banner", 27, 17), ("mark", 14, 17)],
+        spawns={"from_town": (2, 10), "start": (2, 10)},
+        arena_waves=[
+            [("pikeman", 22, 5), ("pikeman", 22, 14)],
+            [("pikeman", 22, 4), ("pikeman", 22, 15), ("charger", 24, 10)],
+            [("pikeman", 8, 4), ("pikeman", 22, 4), ("pikeman", 22, 15),
+             ("charger", 24, 10), ("turret", 14, 4)],
+        ],
+        exit_gate=dict(col=w - 1, rows=(9, 10)),
+        transitions=[dict(x=w - 1, y=9, w=1, h=2, to="k_stage", spawn="from_arena",
+                          needs="arena_cleared")],
+        tint=(110, 92, 116),
+    )
+
+
+def scene_k_stage():
+    """The Festival stage: the Court Herald boss, and a villager to rescue."""
+    w, h = 28, 18
+    g = blank(w, h, "s")        # the whole floor is stage planks
+    ring(g, "k")
+    # a velvet apron and footlights border
+    hline(g, 1, 1, w - 2, "c")
+    hline(g, h - 2, 1, w - 2, "c")
+    poke(g, [(5, 4), (5, 13), (22, 4), (22, 13)], "p")
+    g[9][0] = "g"
+    return dict(
+        name="k_stage", act=2, tiles=rows_to_str(g), buildings=[],
+        decos=[("banner", 2, 2), ("banner", 25, 2), ("mark", 14, 2)],
+        spawns={"from_arena": (2, 9), "start": (2, 9)},
+        boss_at=(21, 9), captive_at=(14, 3),
+        tint=(96, 72, 96),
+    )
+
+
 def all_scenes():
     return {
         "fall": scene_fall(),
         "village": scene_village(),
         "depot": scene_depot(),
         "escape": scene_escape(),
+        "k_gate": scene_k_gate(),
+        "k_town": scene_k_town(),
+        "k_arena": scene_k_arena(),
+        "k_stage": scene_k_stage(),
     }

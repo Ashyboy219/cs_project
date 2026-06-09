@@ -1,4 +1,4 @@
-# JUN-WORLD — Act One: The Ruined Gate
+# JUN-WORLD
 
 A top-down, choice-driven story game built with **Python + pygame**. A scared but
 kind stranger falls through a portal into a dimension ruled by the tyrant
@@ -7,10 +7,12 @@ reckless rebel teen named **Rook**. You want to get home — but how you survive
 cruelty becomes who you are. Play with **mercy**, **survival cunning**, or
 **cruelty**, and the world reacts.
 
-This is the **complete, playable Act One**, built as a polished vertical slice with
-combat, stealth, a boss, save files, and three full moral branches. The full
-six-act design (story, systems, bosses, puzzles, art, and a senior design review)
-lives in **[DESIGN.md](DESIGN.md)** as the roadmap for the rest of the game.
+**Two complete, playable acts** — Act One: *The Ruined Gate* (stealth, an escape
+boss) and Act Two: *The Theatrical Crown* (projectile combat, a shop economy, the
+Court Herald boss) — each with three full moral branches that carry forward. The
+full six-act design (story, systems, bosses, puzzles, art, and a senior design
+review) lives in **[DESIGN.md](DESIGN.md)**; Act Two's authored script is in
+**[DESIGN_ACT2.md](DESIGN_ACT2.md)**.
 
 ## Run it
 
@@ -29,7 +31,8 @@ python3 play.py
 | Interact · talk · advance · confirm | **Z**, **Enter**, **E** |
 | **Sneak** (slower, harder to spot) | **Shift** (hold) |
 | **Dash / dodge** (i-frames, costs stamina) | **Spacebar** |
-| **Sling** (stun a guard / make a lure) | **F**, or **left-click** to aim with the mouse |
+| **Sling** (stun/KO an enemy, or make a lure) | **F**, or **left-click** to aim with the mouse |
+| **Inventory** (use bandage / smokebead) | **Tab** (or **1** / **2** to quick-use) |
 | Pause · Save · Load · Quit | **Esc** |
 
 ## Systems
@@ -45,8 +48,15 @@ python3 play.py
   Pebbles are scarce and refill each zone — restraint is a tool, not a body count.
 - **Stealth** — patrolling guards with real vision cones, hide-in-bushes,
   detection meter, alarms, and a chase if you're spotted. Tuned to be tense.
+- **Projectile combat** (Act Two) — enemies fire **honestly telegraphed** shots;
+  dash through the gaps, KO them with the Sling (never lethal), scavenge pebbles +
+  chits. Multi-wave arenas and an out-think-not-out-DPS boss.
+- **Economy & inventory** — earn **chits**, spend them at the Weird Shopkeeper on
+  consumables (bandage, smokebead) and a Sling upgrade; use items from the **Tab**
+  inventory.
 - **Three moral paths** — Mercy / Survival / Cruelty, tracked and shown bottom-right,
-  shaping dialogue, NPC trust, the world's fear of you, and the ending.
+  shaping dialogue, NPC trust, the world's fear of you, the endings — and they
+  **carry between acts**.
 
 ## Act One, beat by beat
 
@@ -68,6 +78,30 @@ python3 play.py
    but the world turns colder — cruelty). Reach the far gate to clear Act One.
 6. **End of Act One** — closing cards reflect the path you leaned toward and the
    choices you made, and seed the portal mystery: *why did it open, and why you?*
+
+## Act Two — The Theatrical Crown
+
+The pillar shifts from stealth to **projectile combat + arena dodging**. Inside
+Sufflok's gaudy court, a "Festival of Gratitude" nobody is grateful for is about
+to "award" a captured villager to the tyrant on stage.
+
+1. **The Gilded Gate** — Court Pikemen *shoot*. Every attack **flashes before it
+   fires** — dash *through* the line. The Sling now **knocks enemies out** (still
+   non-lethal); KOs drop **chits** and pebbles. A choice sets why you're really here.
+2. **The Court Town** — a hub with the **Weird Shopkeeper** (buy bandages,
+   smokebeads, a pebble pouch, and the **Whipcord Sling** upgrade with chits), a
+   **rigged decree** you beat by exploiting its exact wording (three ways), and
+   **Mr. Ankam's** return — which plays out differently depending on how you left
+   him in Act One.
+3. **The Arena** — a three-wave projectile skirmish behind a portcullis that only
+   opens once the floor is clear.
+4. **The Festival Stage** — the **Court Herald** boss: he never fights, he
+   *conducts* — summoning pikemen, sweeping **spotlight kill-zones**, and firing
+   **confetti bullet-rings** across three escalating phases. Wear his composure
+   down, then **choose how the curtain falls**: hand him his own torn script
+   (mercy), cut the rigging in the dark (survival), or turn the crowd's fear onto
+   him (cruelty). Free the captive and slip toward the Prison Zones as Sufflok,
+   for the first time, files your name under *personal*.
 
 ## Design
 
@@ -97,10 +131,11 @@ jun_world/
   assets.py        procedural sprites, fonts, synthesised sound
   world.py         tilemap: terrain, buildings, collision, line-of-sight
   entities.py      player (dash/stamina), guards (vision), Sling pebbles, pickups
-  scenes.py        Act One maps (built programmatically)
+  scenes.py        Act One + Act Two maps (built programmatically)
   save.py          save-slot file management
   ui.py            dialogue, branching choices, HUD, menus, effects
-  game.py          game loop + the full Act One script
+  game.py          game loop, shared systems, the full Act One script
+  act2.py          Act Two: combat waves, shop, decree puzzle, Court Herald boss
 ```
 
 All art and audio are generated in code — no external asset files required.

@@ -27,6 +27,12 @@ PROPS = {
     "T": dict(solid=True,  cover=True,  bush=False),  # tree
     "C": dict(solid=True,  cover=True,  bush=False),  # crate stack (cover)
     "=": dict(solid=True,  cover=False, bush=False),  # low fence
+    # ---- Act Two: the Twisted Castle Kingdom ----
+    "m": dict(solid=False, cover=False, bush=False),  # court marble floor
+    "c": dict(solid=False, cover=False, bush=False),  # red carpet
+    "s": dict(solid=False, cover=False, bush=False),  # stage planks
+    "k": dict(solid=True,  cover=True,  bush=False),  # castle wall
+    "p": dict(solid=True,  cover=True,  bush=False),  # pillar / cover
 }
 
 
@@ -147,6 +153,22 @@ class TileMap:
             for i in range(3):
                 yy = py + 6 + i * 9 + int(2 * _noise(x, y, i))
                 pygame.draw.line(surf, S.WATER_DK, (px + 3, yy), (px + TILE - 4, yy), 1)
+        elif ch in ("m", "k", "p"):
+            pygame.draw.rect(surf, S.COURT_FLOOR, r)
+            pygame.draw.rect(surf, S.COURT_FLOOR_L, (px, py, TILE, 1))
+            for i in range(2):
+                vy = py + 9 + i * 13
+                pygame.draw.line(surf, S.COURT_FLOOR_L,
+                                 (px + 3, vy), (px + TILE - 4, vy - 3 + int(4 * _noise(x, y, i))), 1)
+        elif ch == "c":
+            pygame.draw.rect(surf, S.COURT_CARPET, r)
+            pygame.draw.rect(surf, S.COURT_CARPET_D, r, 1)
+            pygame.draw.line(surf, S.COURT_GOLD, (px, py + 2), (px + TILE, py + 2), 1)
+            pygame.draw.line(surf, S.COURT_GOLD, (px, py + TILE - 3), (px + TILE, py + TILE - 3), 1)
+        elif ch == "s":
+            pygame.draw.rect(surf, S.STAGE_WOOD, r)
+            for yy in range(py + 4, py + TILE, 7):
+                pygame.draw.line(surf, S.STAGE_WOOD_D, (px, yy), (px + TILE, yy), 1)
 
         # path / road
         if ch in ("P", "g"):
@@ -201,6 +223,27 @@ class TileMap:
         # wall (drawn last so it sits crisp)
         if ch == "#":
             self._wall(surf, px, py)
+        if ch == "k":
+            self._court_wall(surf, px, py)
+        if ch == "p":
+            self._pillar(surf, px, py)
+
+    def _court_wall(self, surf, px, py):
+        r = pygame.Rect(px, py, TILE, TILE)
+        pygame.draw.rect(surf, S.COURT_STONE, r)
+        pygame.draw.rect(surf, S.COURT_STONE_L, (px, py, TILE, 4))
+        pygame.draw.rect(surf, S.NEAR_BLACK, (px, py + TILE - 4, TILE, 4))
+        pygame.draw.line(surf, S.COURT_GOLD, (px, py + 14), (px + TILE, py + 14), 1)
+        pygame.draw.line(surf, S.NEAR_BLACK, (px + 16, py), (px + 16, py + 14), 1)
+        pygame.draw.line(surf, S.NEAR_BLACK, (px + 8, py + 14), (px + 8, py + TILE), 1)
+        pygame.draw.line(surf, S.NEAR_BLACK, (px + 24, py + 14), (px + 24, py + TILE), 1)
+
+    def _pillar(self, surf, px, py):
+        cx = px + TILE // 2
+        pygame.draw.rect(surf, S.COURT_STONE_L, (cx - 8, py + 2, 16, TILE - 4), border_radius=4)
+        pygame.draw.rect(surf, S.COURT_STONE, (cx - 8, py + 2, 6, TILE - 4), border_radius=4)
+        pygame.draw.rect(surf, S.COURT_GOLD, (cx - 9, py + 1, 18, 3), border_radius=2)
+        pygame.draw.rect(surf, S.COURT_GOLD, (cx - 9, py + TILE - 5, 18, 3), border_radius=2)
 
     def _speckle(self, surf, x, y, base, dk, lt):
         px, py = x * TILE, y * TILE

@@ -129,6 +129,13 @@ def build_all_actors():
     for i, col in enumerate(S.VILLAGER_COLS):
         d = tuple(max(0, c - 28) for c in col)
         a["villager%d" % i] = build_actor(col, d, (206, 178, 150), (48, 40, 36))
+    # Act Two cast + enemies
+    a["pikeman"] = build_actor(S.PIKEMAN_BODY, S.PIKEMAN_BODY_D, (196, 178, 158), (34, 30, 40))
+    a["charger"] = build_actor(S.CHARGER_BODY, S.CHARGER_BODY_D, (198, 168, 150), (36, 26, 24))
+    a["conductor"] = build_actor(S.CONDUCTOR_BODY, S.CONDUCTOR_BODY_D, (200, 180, 160), (40, 32, 48))
+    a["herald"] = build_actor(S.HERALD_BODY, S.HERALD_BODY_D, (206, 184, 158), (44, 34, 28),
+                              cape=S.VELVET)
+    a["shopkeep"] = build_actor(S.SHOPKEEP_BODY, S.SHOPKEEP_BODY_D, S.SHOPKEEP_SKIN, (60, 56, 48))
     return a
 
 
