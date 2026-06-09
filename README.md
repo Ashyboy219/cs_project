@@ -1,141 +1,57 @@
-# JUN-WORLD
+# Frogger
 
-A top-down, choice-driven story game built with **Python + pygame**. A scared but
-kind stranger falls through a portal into a dimension ruled by the tyrant
-**Sufflok**. Outside his castle lie ruined villages, frightened people, and a
-reckless rebel teen named **Rook**. You want to get home — but how you survive
-cruelty becomes who you are. Play with **mercy**, **survival cunning**, or
-**cruelty**, and the world reacts.
+A simple Frogger-style game I made with Python and pygame. You play as a frog trying to cross roads and rivers to reach the lily pads at the top. It's one file (`frogger.py`) and everything is drawn with basic shapes — no image files needed.
 
-**Two complete, playable acts** — Act One: *The Ruined Gate* (stealth, an escape
-boss) and Act Two: *The Theatrical Crown* (projectile combat, a shop economy, the
-Court Herald boss) — each with three full moral branches that carry forward. The
-full six-act design (story, systems, bosses, puzzles, art, and a senior design
-review) lives in **[DESIGN.md](DESIGN.md)**; Act Two's authored script is in
-**[DESIGN_ACT2.md](DESIGN_ACT2.md)**.
+## How to run
 
-## Run it
+Make sure you have Python 3.9+ and pygame:
 
 ```bash
-pip install pygame      # numpy is optional but enables sound
-python3 play.py
+pip install pygame
+python3 frogger.py
 ```
 
-(or `python3 -m jun_world`)  ·  Tested on Python 3.9+ with pygame 2.6.
+That's it. A window should pop up. Press **Space** or **Enter** on the title screen to start.
 
 ## Controls
 
-| Action | Keys |
-|---|---|
-| Move | **WASD** / **Arrow keys** |
-| Interact · talk · advance · confirm | **Z**, **Enter**, **E** |
-| **Sneak** (slower, harder to spot) | **Shift** (hold) |
-| **Dash / dodge** (i-frames, costs stamina) | **Spacebar** |
-| **Sling** (stun/KO an enemy, or make a lure) | **F**, or **left-click** to aim with the mouse |
-| **Inventory** (use bandage / smokebead) | **Tab** (or **1** / **2** to quick-use) |
-| Pause · Save · Load · Quit | **Esc** |
+| What | Keys |
+|------|------|
+| Hop up / down / left / right | **Arrow keys** or **WASD** |
+| Start / continue after dying | **Space** or **Enter** |
 
-## Systems
+The frog moves one tile at a time (not smooth walking). There's a short cooldown between hops so you can't spam keys.
 
-- **No more checkpoints.** Death matters: lose all your hearts and it's **Game
-  Over → reload your last save**.
-- **Save files** — 3 manual slots + an autosave on every zone entry. Save/Load from
-  the pause menu (Esc) or the title screen. "Continue" picks up your latest save.
-- **Health** — five hearts, i-frames after a hit, knockback, screenshake. A dash's
-  i-frames let you roll *through* danger if you time it.
-- **The Sling** — your first weapon, given by Rook. A pebble to the head **stuns a
-  guard** (it doesn't kill); a *miss* clatters and **lures** guards to the noise.
-  Pebbles are scarce and refill each zone — restraint is a tool, not a body count.
-- **Stealth** — patrolling guards with real vision cones, hide-in-bushes,
-  detection meter, alarms, and a chase if you're spotted. Tuned to be tense.
-- **Projectile combat** (Act Two) — enemies fire **honestly telegraphed** shots;
-  dash through the gaps, KO them with the Sling (never lethal), scavenge pebbles +
-  chits. Multi-wave arenas and an out-think-not-out-DPS boss.
-- **Economy & inventory** — earn **chits**, spend them at the Weird Shopkeeper on
-  consumables (bandage, smokebead) and a Sling upgrade; use items from the **Tab**
-  inventory.
-- **Three moral paths** — Mercy / Survival / Cruelty, tracked and shown bottom-right,
-  shaping dialogue, NPC trust, the world's fear of you, the endings — and they
-  **carry between acts**.
+## How to play
 
-## Act One, beat by beat
+1. Start at the bottom on the green safe zone.
+2. Hop through the **road** lanes — don't get hit by cars.
+3. Cross the **river** by landing on **logs**. Each log has 1–3 slots (the little dividers show where you can stand). If you hop into open water, you drown.
+4. While on a log, you ride with it. If the log carries you off the screen, you drown.
+5. Reach the **lily pads** at the top. Fill all of them to beat the level.
+6. You get **3 lives**. Cars squash you, water drowns you.
 
-1. **The Fall** — you drop through a torn-song portal onto a cracked road.
-2. **The Ruined Village** — frightened people under Sufflok's "taxes." Read the
-   scorched notices, help the **Nervous Villager** (an optional moral fork), and
-   meet **Rook**, who hands you the Sling and pulls you into a job.
-3. **The Guard Depot (stealth)** — slip past vision cones, stun guards with the
-   Sling, dash out of trouble, and recover **3 supply crates**. Get caught and the
-   guards swarm you — and now that can kill you.
-4. **Mr. Ankam** — Sufflok's cowardly, theatrical assistant locks the village down,
-   shaking the whole time. **You choose how to face him** — *mercy* (see his fear),
-   *survival* (make the truth cost more than the lie), or *cruelty* (make him flee).
-5. **The Raid — boss escape** — the garrison horn sounds. You **flee the East Road**
-   ahead of an **un-killable elite Captain** (you can only outrun or briefly stun
-   him). A locked gate blocks the way, and a **caged villager** offers a fork with an
-   *immediate* payoff: **free them** (a full heart for the run — mercy), **shove the
-   barrel** (fastest — survival), or **tip the cage at the guards** (clears the path,
-   but the world turns colder — cruelty). Reach the far gate to clear Act One.
-6. **End of Act One** — closing cards reflect the path you leaned toward and the
-   choices you made, and seed the portal mystery: *why did it open, and why you?*
+Score goes up when you reach a lily pad. Each new level makes the cars and logs a bit faster.
 
-## Act Two — The Theatrical Crown
+## What's in the code
 
-The pillar shifts from stealth to **projectile combat + arena dodging**. Inside
-Sufflok's gaudy court, a "Festival of Gratitude" nobody is grateful for is about
-to "award" a captured villager to the tyrant on stage.
+Everything lives in `frogger.py` (~480 lines):
 
-1. **The Gilded Gate** — Court Pikemen *shoot*. Every attack **flashes before it
-   fires** — dash *through* the line. The Sling now **knocks enemies out** (still
-   non-lethal); KOs drop **chits** and pebbles. A choice sets why you're really here.
-2. **The Court Town** — a hub with the **Weird Shopkeeper** (buy bandages,
-   smokebeads, a pebble pouch, and the **Whipcord Sling** upgrade with chits), a
-   **rigged decree** you beat by exploiting its exact wording (three ways), and
-   **Mr. Ankam's** return — which plays out differently depending on how you left
-   him in Act One.
-3. **The Arena** — a three-wave projectile skirmish behind a portcullis that only
-   opens once the floor is clear.
-4. **The Festival Stage** — the **Court Herald** boss: he never fights, he
-   *conducts* — summoning pikemen, sweeping **spotlight kill-zones**, and firing
-   **confetti bullet-rings** across three escalating phases. Wear his composure
-   down, then **choose how the curtain falls**: hand him his own torn script
-   (mercy), cut the rigging in the dark (survival), or turn the crowd's fear onto
-   him (cruelty). Free the captive and slip toward the Prison Zones as Sufflok,
-   for the first time, files your name under *personal*.
+- **Frog** — player position, hopping, riding logs
+- **Car** — moves left or right on road lanes
+- **Log** — river platform with 1–3 frog slots
+- **Lanes** — spawns all cars/logs and tracks lily pads
+- **main()** — game loop, input, drawing, score/lives
 
-## Design
+The game uses a grid (columns and rows). On land you're snapped to the grid. On logs you're locked to a slot and move with the log — similar to the original arcade Frogger.
 
-Inspired by Undertale's emotional weirdness and choice-driven conflict, but with its
-own world, its own stealth-and-Sling conflict system, and its own identity — no
-heart-in-a-box battles, no copied characters. Core themes: *fear can become many
-things*, *power changes people*, *mercy is active not passive*, *survival is morally
-messy*, and *cruelty works too fast*.
+## Other stuff in this repo
 
-The expansion was designed by a multi-agent workflow (narrative, systems, boss,
-puzzle, and art directors + a senior design-review critic) and then pressure-tested
-with a formal **game-design review**. The headline finding shaped the build: *a
-player who can win by force must be given a reason to choose restraint — an immediate,
-legible reward, not a deferred one.* That's why Act One teaches "you can win without
-killing" (the un-killable Captain) **before** the gun matters, the Sling **stuns**
-instead of kills, and the escape's mercy choice hands you a heart right when you need
-it. See **[DESIGN.md](DESIGN.md)** for the full six-act roadmap, boss/puzzle designs,
-and the review.
+There's also a bigger pygame story game in `jun_world/` from an earlier version of the project. That's separate from Frogger. To run that one: `pip install pygame` then `python3 play.py`.
 
-## Project layout
+## Requirements
 
-```
-play.py            launcher
-DESIGN.md          full six-act design bible + design review (roadmap)
-jun_world/
-  settings.py      constants, tuning, colour palette
-  assets.py        procedural sprites, fonts, synthesised sound
-  world.py         tilemap: terrain, buildings, collision, line-of-sight
-  entities.py      player (dash/stamina), guards (vision), Sling pebbles, pickups
-  scenes.py        Act One + Act Two maps (built programmatically)
-  save.py          save-slot file management
-  ui.py            dialogue, branching choices, HUD, menus, effects
-  game.py          game loop, shared systems, the full Act One script
-  act2.py          Act Two: combat waves, shop, decree puzzle, Court Herald boss
-```
+- Python 3.9+
+- pygame 2.x
 
-All art and audio are generated in code — no external asset files required.
+See `requirements.txt` for the dependency list (mostly for the other game; Frogger only needs pygame).
