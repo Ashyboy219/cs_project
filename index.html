@@ -375,7 +375,37 @@
     #slide-6 { background: var(--green-dark); }
     #slide-7 { background: linear-gradient(160deg, var(--green-dark) 0%, #18421e 100%); }
     #slide-8 { background: var(--green-dark); }
-    #slide-9 { background: radial-gradient(ellipse at center, #0a2614 0%, var(--green-dark) 75%); }
+    #slide-9 { background: linear-gradient(160deg, var(--green-dark) 0%, #0a1e38 100%); }
+    #slide-10 { background: radial-gradient(ellipse at center, #0a2614 0%, var(--green-dark) 75%); }
+
+    /* live demo slide */
+    .demo-wrap {
+      position: relative;
+      width: min(640px, 92vw);
+      border: 2px solid var(--accent);
+      border-radius: 10px;
+      overflow: hidden;
+      background: #0a1422;
+      box-shadow: 0 0 36px rgba(94,220,128,0.28);
+      line-height: 0;
+    }
+
+    #live-demo-canvas {
+      width: 100%;
+      height: auto;
+      display: block;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .demo-hint {
+      margin-top: 14px;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      max-width: 700px;
+      text-align: center;
+      line-height: 1.5;
+    }
 
     /* pixel border decoration on title */
     .pixel-border {
@@ -747,8 +777,22 @@ roadRows  = {<span class="num">13</span>, <span class="num">14</span>}
     </div>
   </section>
 
-  <!-- ── SLIDE 9 · Summary / Conclusion ── -->
+  <!-- ── SLIDE 9 · Live Playable Demo ── -->
   <section class="slide" id="slide-9">
+    <h2>Live Demo — Play It!</h2>
+    <div class="demo-wrap">
+      <canvas id="live-demo-canvas" width="640" height="724" tabindex="0"
+              title="Click here, then use arrow keys or WASD"></canvas>
+    </div>
+    <p class="demo-hint">
+      Click the game, then <span class="key-badge">↑ ↓ ← →</span> / <span class="key-badge">WASD</span> to hop ·
+      <span class="key-badge">Space</span> to start.
+      Use <strong style="color:var(--accent);">Next ▶</strong> when you're done (keys won't advance slides on this screen).
+    </p>
+  </section>
+
+  <!-- ── SLIDE 10 · Summary / Conclusion ── -->
+  <section class="slide" id="slide-10">
     <div class="frog-art" style="font-size:3.5rem;">🐸</div>
     <h2>Summary</h2>
     <div class="three-col" style="max-width:900px;">
@@ -792,7 +836,7 @@ roadRows  = {<span class="num">13</span>, <span class="num">14</span>}
 <div id="progress-bar" style="width:0%"></div>
 
 <div id="info-bar">
-  <span id="slide-counter">1 / 10</span>
+  <span id="slide-counter">1 / 11</span>
   &nbsp;|&nbsp;
   <span id="timer">5:00</span>
 </div>
@@ -802,13 +846,16 @@ roadRows  = {<span class="num">13</span>, <span class="num">14</span>}
   <button class="nav-btn" id="btn-next">Next ▶</button>
 </div>
 
+<script src="game/demo.js"></script>
 <script>
-  const TOTAL_SLIDES = 10;
+  const TOTAL_SLIDES = 11;
   const DURATION_MS  = 5 * 60 * 1000; // 5 minutes
+  const DEMO_SLIDE   = 9;
 
   let current   = 0;
   let startTime = Date.now();
   let autoTimer = null;
+  let demoGame  = null;
 
   const slides     = document.querySelectorAll('.slide');
   const bar        = document.getElementById('progress-bar');
@@ -816,9 +863,24 @@ roadRows  = {<span class="num">13</span>, <span class="num">14</span>}
   const timerEl    = document.getElementById('timer');
   const btnPrev    = document.getElementById('btn-prev');
   const btnNext    = document.getElementById('btn-next');
+  const demoCanvas = document.getElementById('live-demo-canvas');
 
-  // slide durations (seconds) summing to ~300
-  const slideDurations = [28, 30, 32, 28, 30, 30, 28, 30, 32, 32];
+  // content slides ~5 min; demo slide does not auto-advance
+  const slideDurations = [28, 30, 32, 28, 30, 30, 28, 30, 32, Infinity, 32];
+
+  function manageDemo() {
+    if (current === DEMO_SLIDE) {
+      if (!demoGame && typeof initFroggerDemo === 'function') {
+        demoGame = initFroggerDemo(demoCanvas);
+      }
+      if (demoGame) {
+        demoGame.start();
+        demoCanvas.focus();
+      }
+    } else if (demoGame) {
+      demoGame.stop();
+    }
+  }
 
   function show(idx) {
     slides[current].classList.remove('active');
@@ -826,9 +888,11 @@ roadRows  = {<span class="num">13</span>, <span class="num">14</span>}
     slides[current].classList.add('active');
     counter.textContent = `${current + 1} / ${TOTAL_SLIDES}`;
 
+    manageDemo();
+
     clearTimeout(autoTimer);
     const dur = slideDurations[current] * 1000;
-    if (current < TOTAL_SLIDES - 1) {
+    if (current < TOTAL_SLIDES - 1 && Number.isFinite(dur)) {
       autoTimer = setTimeout(() => show(current + 1), dur);
     }
   }
@@ -851,9 +915,13 @@ roadRows  = {<span class="num">13</span>, <span class="num">14</span>}
   btnNext.addEventListener('click', () => show(current + 1));
 
   document.addEventListener('keydown', e => {
+    // on the live demo slide, game keys stay with the canvas — use Next/Prev buttons
+    if (current === DEMO_SLIDE) return;
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') show(current + 1);
     if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                     show(current - 1);
   });
+
+  demoCanvas.addEventListener('click', () => demoCanvas.focus());
 
   // ── Build grid demo on slide 8 ──
   (function buildGrid() {

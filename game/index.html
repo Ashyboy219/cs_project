@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Frogger — Play</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0a1422;
+      font-family: monospace;
+      color: #9ab8a8;
+    }
+    canvas { display: block; max-width: 100%; height: auto; border: 2px solid #5edc80; border-radius: 8px; }
+    p { position: fixed; bottom: 12px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <p>Arrow keys / WASD · Space to start</p>
+  <script src="demo.js"></script>
+  <script>
+    const demo = initFroggerDemo(document.getElementById('game'));
+    demo.start();
+  </script>
+</body>
+</html>
