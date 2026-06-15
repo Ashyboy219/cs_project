@@ -57,3 +57,11 @@ python3 frogger.py
 5. Runs with pygame only  
 
 Full details in `documentation/project-specification.md`.
+
+---
+
+## Presentation
+
+Live slides for class demo: [cs-project-smoky.vercel.app](https://cs-project-smoky.vercel.app/)
+
+Files: `index.html` and `vercel.json` at repo root (Vercel deployment).
