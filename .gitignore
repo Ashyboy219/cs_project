@@ -2,3 +2,6 @@ __pycache__/
 *.pyc
 .idea/
 saves/
+
+# pygbag intermediate build output (deployed copy lives in game/)
+frogger_web/build/
