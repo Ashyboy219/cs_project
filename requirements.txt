@@ -1,2 +1,0 @@
-pygame>=2.1
-numpy>=1.20   ; optional, enables synthesised sound effects

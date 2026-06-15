@@ -1,57 +1,59 @@
-# Frogger
+# Year End Project — Frogger
 
-A simple Frogger-style game I made with Python and pygame. You play as a frog trying to cross roads and rivers to reach the lily pads at the top. It's one file (`frogger.py`) and everything is drawn with basic shapes — no image files needed.
+**IB Computer Science SL** · Skyline High School  
+**Team:** Ashish Naik ([Ashyboy219](https://github.com/Ashyboy219)) · Kruthik Ankam ([KiwiHazards](https://github.com/KiwiHazards))
 
-## How to run
+A Frogger-style arcade game built in Python and pygame. Guide a frog across roads and rivers to reach lily pads at the top. Grid movement, log slots, cars, scoring, and levels — all drawn with code (no image files).
 
-Make sure you have Python 3.9+ and pygame:
+---
+
+## Repository structure
+
+```
+documentation/          Required project docs (norms, spec, Gantt, testing)
+  templates/            Teacher-provided blank templates (.docx / .pdf)
+  group-norms.md
+  project-specification.md
+  record-of-tasks.md
+  testing.md
+product/                Source code
+  frogger.py
+  requirements.txt
+  README.md
+```
+
+---
+
+## Quick start
 
 ```bash
-pip install pygame
+cd product
+pip install -r requirements.txt
 python3 frogger.py
 ```
 
-That's it. A window should pop up. Press **Space** or **Enter** on the title screen to start.
+**Controls:** Arrow keys or WASD to hop · Space/Enter to start or continue
 
-## Controls
+---
 
-| What | Keys |
-|------|------|
-| Hop up / down / left / right | **Arrow keys** or **WASD** |
-| Start / continue after dying | **Space** or **Enter** |
+## Assignment deliverables
 
-The frog moves one tile at a time (not smooth walking). There's a short cooldown between hops so you can't spam keys.
+| Deliverable | Location |
+|-------------|----------|
+| Group norms | `documentation/group-norms.md` |
+| Project specification | `documentation/project-specification.md` |
+| Gantt / record of tasks | `documentation/record-of-tasks.md` |
+| Test plan | `documentation/testing.md` |
+| Working product | `product/frogger.py` |
 
-## How to play
+---
 
-1. Start at the bottom on the green safe zone.
-2. Hop through the **road** lanes — don't get hit by cars.
-3. Cross the **river** by landing on **logs**. Each log has 1–3 slots (the little dividers show where you can stand). If you hop into open water, you drown.
-4. While on a log, you ride with it. If the log carries you off the screen, you drown.
-5. Reach the **lily pads** at the top. Fill all of them to beat the level.
-6. You get **3 lives**. Cars squash you, water drowns you.
+## Success criteria (summary)
 
-Score goes up when you reach a lily pad. Each new level makes the cars and logs a bit faster.
+1. Grid-based hopping with keyboard controls  
+2. Cars and water collisions work; frog rides log slots  
+3. Lily pads, score, lives, levels, and game over  
+4. Modular OOP design (Frog, Car, Log, Lanes)  
+5. Runs with pygame only  
 
-## What's in the code
-
-Everything lives in `frogger.py` (~480 lines):
-
-- **Frog** — player position, hopping, riding logs
-- **Car** — moves left or right on road lanes
-- **Log** — river platform with 1–3 frog slots
-- **Lanes** — spawns all cars/logs and tracks lily pads
-- **main()** — game loop, input, drawing, score/lives
-
-The game uses a grid (columns and rows). On land you're snapped to the grid. On logs you're locked to a slot and move with the log — similar to the original arcade Frogger.
-
-## Other stuff in this repo
-
-There's also a bigger pygame story game in `jun_world/` from an earlier version of the project. That's separate from Frogger. To run that one: `pip install pygame` then `python3 play.py`.
-
-## Requirements
-
-- Python 3.9+
-- pygame 2.x
-
-See `requirements.txt` for the dependency list (mostly for the other game; Frogger only needs pygame).
+Full details in `documentation/project-specification.md`.
