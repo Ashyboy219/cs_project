@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Frogger — Game Presentation</title>
+  <style>
+    :root {
+      --green-dark: #0d2b1a;
+      --green-mid:  #1a5c33;
+      --green-safe: #22683a;
+      --green-lily: #46a857;
+      --water-dark: #0a1e3d;
+      --water-mid:  #1a4678;
+      --water-lit:  #2a6aaa;
+      --road-dark:  #1c1c24;
+      --road-mid:   #303038;
+      --frog-green: #3cc850;
+      --frog-eye:   #e0f0ff;
+      --car-red:    #e04040;
+      --car-orange: #dc9a20;
+      --car-blue:   #4878dc;
+      --log-brown:  #784828;
+      --lily-pink:  #c86090;
+      --text-light: #dff0e8;
+      --text-dim:   #7aad92;
+      --accent:     #5edc80;
+      --white:      #f0f8f2;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background: var(--green-dark);
+      color: var(--text-light);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    /* ── slide container ── */
+    #deck {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 64px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+    }
+
+    .slide.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    /* ── progress bar ── */
+    #progress-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      height: 4px;
+      background: var(--accent);
+      transition: width 0.4s linear;
+      z-index: 100;
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    /* ── nav controls ── */
+    #nav {
+      position: fixed;
+      bottom: 20px;
+      right: 24px;
+      display: flex;
+      gap: 10px;
+      z-index: 100;
+    }
+
+    .nav-btn {
+      background: rgba(94,220,128,0.15);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      padding: 6px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .nav-btn:hover { background: rgba(94,220,128,0.3); }
+
+    /* slide counter + timer */
+    #info-bar {
+      position: fixed;
+      bottom: 22px;
+      left: 24px;
+      font-size: 13px;
+      color: var(--text-dim);
+      z-index: 100;
+      letter-spacing: 1px;
+    }
+
+    #timer { color: var(--accent); }
+
+    /* ── typography ── */
+    h1 {
+      font-size: clamp(2.4rem, 6vw, 4.5rem);
+      color: var(--accent);
+      text-shadow: 0 0 30px rgba(94,220,128,0.5);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    h2 {
+      font-size: clamp(1.6rem, 3.5vw, 2.6rem);
+      color: var(--accent);
+      text-align: center;
+      margin-bottom: 32px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    h3 {
+      font-size: clamp(1rem, 2vw, 1.4rem);
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+
+    p {
+      font-size: clamp(0.9rem, 1.8vw, 1.15rem);
+      line-height: 1.8;
+      color: var(--text-light);
+      max-width: 760px;
+      text-align: center;
+    }
+
+    /* ── grid / two-col layout ── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      width: 100%;
+      max-width: 1000px;
+    }
+
+    .three-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 28px;
+      width: 100%;
+      max-width: 1080px;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(94,220,128,0.2);
+      border-radius: 10px;
+      padding: 24px 28px;
+    }
+
+    .card h3 {
+      color: var(--accent);
+      font-size: 1rem;
+      margin-bottom: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .card p, .card li {
+      font-size: 0.92rem;
+      line-height: 1.7;
+      text-align: left;
+    }
+
+    ul { list-style: none; padding: 0; }
+    ul li::before { content: "▶ "; color: var(--accent); }
+
+    /* ── decorative frog ── */
+    .frog-art {
+      font-size: clamp(3rem, 8vw, 6rem);
+      line-height: 1;
+      filter: drop-shadow(0 0 20px rgba(60,200,80,0.6));
+      margin-bottom: 16px;
+    }
+
+    /* ── lane preview ── */
+    .lanes {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 100%;
+      max-width: 700px;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .lane {
+      display: flex;
+      align-items: center;
+      padding: 10px 16px;
+      font-size: 0.85rem;
+      gap: 12px;
+      border-radius: 4px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .lane-goal   { background: var(--green-safe); }
+    .lane-safe   { background: var(--green-mid); }
+    .lane-water  { background: var(--water-mid); }
+    .lane-road   { background: var(--road-mid); }
+
+    .lane-label { font-size: 0.78rem; color: rgba(255,255,255,0.5); letter-spacing: 1px; min-width: 55px; }
+
+    /* moving entities in lane preview */
+    .car-block {
+      padding: 3px 12px;
+      border-radius: 3px;
+      font-size: 0.8rem;
+      animation: carMove 3s linear infinite;
+    }
+
+    .car-r { background: var(--car-red);    animation-direction: normal; }
+    .car-o { background: var(--car-orange); animation-direction: reverse; animation-duration: 2.5s; }
+    .car-b { background: var(--car-blue);   animation-duration: 2s; }
+
+    .log-block {
+      background: var(--log-brown);
+      padding: 4px 20px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      animation: logMove 4s linear infinite;
+    }
+
+    @keyframes carMove {
+      from { transform: translateX(-200px); }
+      to   { transform: translateX(600px); }
+    }
+
+    @keyframes logMove {
+      from { transform: translateX(-300px); }
+      to   { transform: translateX(700px); }
+    }
+
+    /* frog in lane */
+    .frog-in {
+      font-size: 1.2rem;
+      position: absolute;
+      right: 60px;
+      animation: none;
+    }
+
+    /* ── code block ── */
+    pre {
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(94,220,128,0.2);
+      border-radius: 8px;
+      padding: 20px 24px;
+      font-size: clamp(0.72rem, 1.3vw, 0.88rem);
+      line-height: 1.7;
+      overflow-x: auto;
+      text-align: left;
+      max-width: 900px;
+      width: 100%;
+      color: #b0e8c0;
+    }
+
+    .kw   { color: #7ec8ff; }
+    .cls  { color: #f9c97c; }
+    .fn   { color: #7edc8c; }
+    .cm   { color: #5a8a6a; font-style: italic; }
+    .str  { color: #f98c8c; }
+    .num  { color: #e0c07a; }
+
+    /* ── grid diagram ── */
+    .grid-demo {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 2px;
+      max-width: 500px;
+      width: 100%;
+    }
+
+    .gc {
+      aspect-ratio: 1;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(0.55rem, 1.2vw, 0.85rem);
+    }
+
+    .gc-safe  { background: var(--green-mid); }
+    .gc-goal  { background: var(--green-lily); }
+    .gc-road  { background: var(--road-mid); }
+    .gc-water { background: var(--water-mid); }
+    .gc-frog  { background: var(--frog-green); color: #000; font-weight: bold; }
+    .gc-car   { background: var(--car-red); color: #fff; }
+    .gc-log   { background: var(--log-brown); color: #fff; }
+    .gc-lily  { background: var(--lily-pink); }
+
+    /* ── tag badges ── */
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      border: 1px solid;
+      margin: 4px;
+      letter-spacing: 1px;
+    }
+
+    .badge-green  { color: var(--accent); border-color: var(--accent); }
+    .badge-blue   { color: #7ec8ff; border-color: #7ec8ff; }
+    .badge-orange { color: #f9c97c; border-color: #f9c97c; }
+
+    /* ── stat bar ── */
+    .stat-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .stat-label { font-size: 0.85rem; min-width: 100px; color: var(--text-dim); }
+
+    .stat-track {
+      flex: 1;
+      height: 10px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .stat-fill {
+      height: 100%;
+      border-radius: 10px;
+      background: var(--accent);
+    }
+
+    /* ── background pattern ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        radial-gradient(circle at 20% 30%, rgba(34,104,58,0.08) 0%, transparent 60%),
+        radial-gradient(circle at 80% 70%, rgba(26,70,120,0.1) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #deck { z-index: 1; }
+
+    /* ── slide-specific backgrounds ── */
+    #slide-0 { background: radial-gradient(ellipse at center, #0d3320 0%, var(--green-dark) 70%); }
+    #slide-1 { background: var(--green-dark); }
+    #slide-2 { background: linear-gradient(160deg, var(--green-dark) 0%, #0a1e38 100%); }
+    #slide-3 { background: linear-gradient(160deg, #0a1e38 0%, var(--green-dark) 100%); }
+    #slide-4 { background: var(--green-dark); }
+    #slide-5 { background: linear-gradient(160deg, var(--green-dark) 0%, #0a1a30 100%); }
+    #slide-6 { background: var(--green-dark); }
+    #slide-7 { background: linear-gradient(160deg, var(--green-dark) 0%, #18421e 100%); }
+    #slide-8 { background: var(--green-dark); }
+    #slide-9 { background: radial-gradient(ellipse at center, #0a2614 0%, var(--green-dark) 75%); }
+
+    /* pixel border decoration on title */
+    .pixel-border {
+      border: 2px solid var(--accent);
+      box-shadow: 0 0 0 4px var(--green-dark), 0 0 0 6px var(--accent), inset 0 0 40px rgba(94,220,128,0.05);
+      border-radius: 12px;
+      padding: 48px 80px;
+      text-align: center;
+    }
+
+    .subtitle {
+      font-size: clamp(0.9rem, 2vw, 1.2rem);
+      color: var(--text-dim);
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      margin-top: 16px;
+    }
+
+    .big-num {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      color: var(--accent);
+      font-weight: bold;
+    }
+
+    .key-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 5px;
+      padding: 3px 10px;
+      font-size: 0.85rem;
+      margin: 2px;
+    }
+
+    /* life icons */
+    .life { font-size: 1.6rem; }
+
+    /* grid diagram labels */
+    .grid-wrap {
+      display: flex;
+      gap: 32px;
+      align-items: flex-start;
+      max-width: 900px;
+      width: 100%;
+    }
+
+    .grid-legend {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 0.82rem;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .legend-swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+<div id="deck">
+
+  <!-- ── SLIDE 0 · Title ── -->
+  <section class="slide active" id="slide-0">
+    <div class="pixel-border">
+      <div class="frog-art">🐸</div>
+      <h1>Frogger</h1>
+      <p class="subtitle">A Python &amp; Pygame remake</p>
+      <br />
+      <p style="font-size:0.9rem; color:var(--text-dim);">
+        A grid-based arcade classic — dodge cars, hop logs,<br/>
+        and reach the lily pads.
+      </p>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 1 · What is Frogger? ── -->
+  <section class="slide" id="slide-1">
+    <h2>What is Frogger?</h2>
+    <div class="two-col" style="max-width:900px;">
+      <div class="card">
+        <h3>🕹️ The Original (1981)</h3>
+        <ul>
+          <li>Konami arcade cabinet</li>
+          <li>Became a cultural icon</li>
+          <li>Simple premise, deep challenge</li>
+          <li>Top-selling arcade game of its era</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>🐍 This Version</h3>
+        <ul>
+          <li>Built with Python 3.9+</li>
+          <li>Uses Pygame 2.x for rendering</li>
+          <li>~480 lines — one file</li>
+          <li>No images: pure shape drawing</li>
+          <li>Full level progression system</li>
+        </ul>
+      </div>
+    </div>
+    <br />
+    <p>Guide your frog safely across a deadly road and river to reach five lily pads at the top. It sounds simple — it isn't.</p>
+  </section>
+
+  <!-- ── SLIDE 2 · How to Play ── -->
+  <section class="slide" id="slide-2">
+    <h2>How to Play</h2>
+    <div class="two-col" style="max-width:860px;">
+      <div class="card">
+        <h3>🎮 Controls</h3>
+        <ul>
+          <li><span class="key-badge">↑ ↓ ← →</span> hop in any direction</li>
+          <li><span class="key-badge">W A S D</span> same — your choice</li>
+          <li><span class="key-badge">Space</span> / <span class="key-badge">Enter</span> start / continue</li>
+          <li>One grid tile per hop</li>
+          <li>Brief cooldown prevents key spam</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>🎯 Objective</h3>
+        <ul>
+          <li>Start at the bottom safe zone</li>
+          <li>Cross the road — avoid cars</li>
+          <li>Cross the river — ride logs</li>
+          <li>Land on all 5 lily pads to win</li>
+          <li>Each new level gets faster</li>
+        </ul>
+        <br />
+        <div style="display:flex; gap:8px; align-items:center;">
+          <span class="life">🐸</span>
+          <span class="life">🐸</span>
+          <span class="life">🐸</span>
+          <span style="font-size:0.82rem; color:var(--text-dim);">3 lives</span>
+        </div>
+      </div>
+    </div>
+    <br/>
+    <p style="font-size:0.88rem; color:var(--text-dim);">The frog moves one tile at a time — not smooth walking. Precision matters more than speed.</p>
+  </section>
+
+  <!-- ── SLIDE 3 · The Game World (lane diagram) ── -->
+  <section class="slide" id="slide-3">
+    <h2>The Game World</h2>
+    <div class="lanes">
+      <div class="lane lane-goal">
+        <span class="lane-label">GOAL</span>
+        🌸 &nbsp; Lily Pad &nbsp; 🌸 &nbsp; Lily Pad &nbsp; 🌸 &nbsp; Lily Pad &nbsp; 🌸 &nbsp; Lily Pad &nbsp; 🌸 &nbsp; Lily Pad
+      </div>
+      <div class="lane lane-safe" style="justify-content:center;">
+        <span class="lane-label">SAFE</span>
+        ━━━━━━━━━━━  safe median  ━━━━━━━━━━━
+      </div>
+      <div class="lane lane-water" style="overflow:hidden; height:38px;">
+        <span class="lane-label">RIVER</span>
+        <div class="log-block">🪵 log</div>
+        <div class="log-block" style="animation-delay:-2s;">🪵 log</div>
+      </div>
+      <div class="lane lane-water" style="overflow:hidden; height:38px;">
+        <span class="lane-label">RIVER</span>
+        <div class="log-block" style="animation-direction:reverse; animation-duration:3s;">🪵 log</div>
+      </div>
+      <div class="lane lane-safe" style="justify-content:center;">
+        <span class="lane-label">SAFE</span>
+        ━━━━━━━━━━━  safe median  ━━━━━━━━━━━
+      </div>
+      <div class="lane lane-road" style="overflow:hidden; height:38px;">
+        <span class="lane-label">ROAD</span>
+        <div class="car-block car-r">🚗 car</div>
+        <div class="car-block car-o" style="animation-delay:-1s;">🚗 car</div>
+      </div>
+      <div class="lane lane-road" style="overflow:hidden; height:38px;">
+        <span class="lane-label">ROAD</span>
+        <div class="car-block car-b" style="animation-direction:reverse;">🚗 car</div>
+      </div>
+      <div class="lane lane-safe" style="justify-content:center; font-size:1.2rem;">
+        <span class="lane-label">START</span>
+        🐸  you start here
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 4 · The Road ── -->
+  <section class="slide" id="slide-4">
+    <h2>Zone 1 — The Road</h2>
+    <div class="two-col" style="max-width:900px;">
+      <div class="card">
+        <h3>🚗 Traffic Rules</h3>
+        <ul>
+          <li>2 road lanes, cars move sideways</li>
+          <li>Each lane has its own direction</li>
+          <li>Multiple cars per lane</li>
+          <li>Speed increases every level</li>
+          <li>Touch a car → squashed 💀</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>📐 Grid Movement</h3>
+        <ul>
+          <li>Frog snaps to column/row tiles</li>
+          <li>Cars detected by tile overlap</li>
+          <li>Hop cooldown: 0.14 seconds</li>
+          <li>One hop = one tile forward</li>
+          <li>Plan your gaps, don't rush</li>
+        </ul>
+      </div>
+    </div>
+    <br/>
+    <div class="card" style="max-width:580px; text-align:left;">
+      <h3 style="margin-bottom:10px;">Strategy</h3>
+      <p style="text-align:left; font-size:0.9rem;">
+        Watch the pattern. Cars repeat at fixed intervals. Count the gaps and move when there's a clear column ahead. On higher levels, you may only have <strong style="color:var(--accent);">one or two tiles of window</strong> — read the road before you hop.
+      </p>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 5 · The River ── -->
+  <section class="slide" id="slide-5">
+    <h2>Zone 2 — The River</h2>
+    <div class="two-col" style="max-width:900px;">
+      <div class="card">
+        <h3>🪵 Logs</h3>
+        <ul>
+          <li>Each log has 1–3 frog slots</li>
+          <li>Small dividers mark where to stand</li>
+          <li>Logs drift left or right</li>
+          <li>You ride with the log automatically</li>
+          <li>Log off-screen → you drown 💧</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>💧 Water Rules</h3>
+        <ul>
+          <li>Open water = instant death</li>
+          <li>Must hop <em>onto</em> a log exactly</li>
+          <li>You can hop between logs mid-river</li>
+          <li>River direction reverses by lane</li>
+          <li>Speed scales with each level</li>
+        </ul>
+      </div>
+    </div>
+    <br/>
+    <div class="card" style="max-width:580px;">
+      <h3 style="margin-bottom:10px;">The Ride System</h3>
+      <p style="text-align:left; font-size:0.9rem;">
+        When you land on a log, <code style="color:var(--accent);">frog.rideLog</code> is set and your
+        X position is locked to the log's slot center. Your frog floats with it — until you hop off or drift out of bounds.
+      </p>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 6 · Lily Pads & Winning ── -->
+  <section class="slide" id="slide-6">
+    <h2>Zone 3 — Lily Pads &amp; Victory</h2>
+    <div class="three-col" style="max-width:920px;">
+      <div class="card">
+        <h3>🌸 The Goal</h3>
+        <ul>
+          <li>5 lily pad slots at top</li>
+          <li>Each must be filled once</li>
+          <li>Land exactly on a pad</li>
+          <li>Can't reuse a filled pad</li>
+          <li>Score increases per pad</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>🏆 Scoring</h3>
+        <ul>
+          <li>+10 per lily pad reached</li>
+          <li>Score persists across levels</li>
+          <li>Displayed in the HUD bar</li>
+          <li>Lives shown alongside score</li>
+          <li>No time bonus (yet!)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>📈 Leveling</h3>
+        <ul>
+          <li>Fill all 5 → next level</li>
+          <li>Cars get faster each level</li>
+          <li>Logs get faster each level</li>
+          <li>Speed cap prevents impossibility</li>
+          <li>Pads reset — loop forever</li>
+        </ul>
+      </div>
+    </div>
+    <br/>
+    <p style="font-size:0.9rem; color:var(--text-dim);">
+      Filling all five lily pads triggers the level transition. The arena resets with slightly higher entity speeds — how far can you go?
+    </p>
+  </section>
+
+  <!-- ── SLIDE 7 · Code Architecture ── -->
+  <section class="slide" id="slide-7">
+    <h2>Code Architecture</h2>
+    <pre>
+<span class="cm"># frogger.py  (~480 lines, one file, no assets)</span>
+
+<span class="kw">class</span> <span class="cls">Frog</span>:
+    <span class="cm"># player position, hopping, log-riding</span>
+    col, row        <span class="cm"># grid tile</span>
+    rideLog, rideSlot  <span class="cm"># None when on land</span>
+    centerX  <span class="cm">→</span> <span class="fn">slotCenterX</span>(slot) <span class="kw">if</span> riding
+
+<span class="kw">class</span> <span class="cls">Car</span>:
+    <span class="cm"># moves left or right every frame</span>
+    col, row, speed, direction
+
+<span class="kw">class</span> <span class="cls">Log</span>:
+    <span class="cm"># river platform, 1–3 frog slots</span>
+    col, row, speed, slots, direction
+    <span class="fn">slotCenterX</span>(slot)  <span class="cm"># pixel X for each slot</span>
+
+<span class="kw">class</span> <span class="cls">Lanes</span>:
+    <span class="cm"># spawns + owns all Cars and Logs</span>
+    <span class="cm"># tracks 5 lily pad states (filled / empty)</span>
+    <span class="fn">spawn</span>(), <span class="fn">update</span>(dt), <span class="fn">draw</span>(surface)
+
+<span class="fn">main</span>():
+    <span class="cm"># game loop: input → update → draw</span>
+    <span class="cm"># handles score, lives, level transitions</span>
+    </pre>
+  </section>
+
+  <!-- ── SLIDE 8 · Grid System ── -->
+  <section class="slide" id="slide-8">
+    <h2>Grid System</h2>
+    <div class="two-col" style="max-width:940px; align-items:start;">
+      <div>
+        <pre style="font-size:0.82rem;">
+<span class="cm"># screen constants</span>
+tileSize  = <span class="num">40</span>   <span class="cm"># px per cell</span>
+colCount  = <span class="num">16</span>   <span class="cm"># 16 columns</span>
+rowCount  = <span class="num">17</span>   <span class="cm"># 17 rows</span>
+hudHeight = <span class="num">44</span>   <span class="cm"># HUD bar on top</span>
+
+<span class="kw">def</span> <span class="fn">rowY</span>(row):
+    <span class="kw">return</span> hudHeight + row * tileSize
+
+<span class="kw">def</span> <span class="fn">colX</span>(col):
+    <span class="kw">return</span> col * tileSize + tileSize // <span class="num">2</span>
+
+<span class="cm"># lane classification by row number</span>
+goalRows  = {<span class="num">1</span>, <span class="num">2</span>}
+safeRows  = {<span class="num">0</span>, <span class="num">3</span>, <span class="num">6</span>, <span class="num">9</span>, <span class="num">12</span>, <span class="num">15</span>, <span class="num">16</span>}
+waterRows = {<span class="num">4</span>, <span class="num">5</span>, <span class="num">7</span>, <span class="num">8</span>, <span class="num">10</span>, <span class="num">11</span>}
+roadRows  = {<span class="num">13</span>, <span class="num">14</span>}
+        </pre>
+      </div>
+      <div>
+        <div class="grid-demo" id="grid-demo"></div>
+        <br />
+        <div class="grid-legend">
+          <div class="legend-row"><div class="legend-swatch" style="background:var(--green-lily)"></div>Lily pad / goal</div>
+          <div class="legend-row"><div class="legend-swatch" style="background:var(--green-mid)"></div>Safe zone</div>
+          <div class="legend-row"><div class="legend-swatch" style="background:var(--water-mid)"></div>River (water)</div>
+          <div class="legend-row"><div class="legend-swatch" style="background:var(--road-mid)"></div>Road</div>
+          <div class="legend-row"><div class="legend-swatch" style="background:var(--frog-green)"></div>Frog (you)</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 9 · Summary / Conclusion ── -->
+  <section class="slide" id="slide-9">
+    <div class="frog-art" style="font-size:3.5rem;">🐸</div>
+    <h2>Summary</h2>
+    <div class="three-col" style="max-width:900px;">
+      <div class="card" style="text-align:center;">
+        <div class="big-num">~480</div>
+        <p style="font-size:0.85rem; color:var(--text-dim); text-align:center;">lines of Python</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div class="big-num">4</div>
+        <p style="font-size:0.85rem; color:var(--text-dim); text-align:center;">core classes</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div class="big-num">∞</div>
+        <p style="font-size:0.85rem; color:var(--text-dim); text-align:center;">levels (speed scales)</p>
+      </div>
+    </div>
+    <br/>
+    <div class="card" style="max-width:680px; text-align:center;">
+      <p style="text-align:center;">
+        <span class="badge badge-green">Python 3.9+</span>
+        <span class="badge badge-blue">Pygame 2.x</span>
+        <span class="badge badge-orange">Grid-based movement</span>
+        <span class="badge badge-green">No assets needed</span>
+        <span class="badge badge-blue">One-file game</span>
+        <span class="badge badge-orange">Arcade-faithful</span>
+      </p>
+      <br/>
+      <p style="font-size:0.92rem; line-height:1.8;">
+        A faithful Python recreation of the 1981 Konami classic. One file, zero image assets, pure shape rendering — showing that <strong style="color:var(--accent);">clean game architecture</strong> and <strong style="color:var(--accent);">fun mechanics</strong> can coexist in a small, readable codebase.
+      </p>
+    </div>
+    <br/>
+    <p style="font-size:0.85rem; color:var(--text-dim);">
+      Run it: <code style="color:var(--accent);">pip install pygame &amp;&amp; python3 frogger.py</code>
+    </p>
+  </section>
+
+</div><!-- #deck -->
+
+<!-- ── UI overlay ── -->
+<div id="progress-bar" style="width:0%"></div>
+
+<div id="info-bar">
+  <span id="slide-counter">1 / 10</span>
+  &nbsp;|&nbsp;
+  <span id="timer">5:00</span>
+</div>
+
+<div id="nav">
+  <button class="nav-btn" id="btn-prev">◀ Prev</button>
+  <button class="nav-btn" id="btn-next">Next ▶</button>
+</div>
+
+<script>
+  const TOTAL_SLIDES = 10;
+  const DURATION_MS  = 5 * 60 * 1000; // 5 minutes
+
+  let current   = 0;
+  let startTime = Date.now();
+  let autoTimer = null;
+
+  const slides     = document.querySelectorAll('.slide');
+  const bar        = document.getElementById('progress-bar');
+  const counter    = document.getElementById('slide-counter');
+  const timerEl    = document.getElementById('timer');
+  const btnPrev    = document.getElementById('btn-prev');
+  const btnNext    = document.getElementById('btn-next');
+
+  // slide durations (seconds) summing to ~300
+  const slideDurations = [28, 30, 32, 28, 30, 30, 28, 30, 32, 32];
+
+  function show(idx) {
+    slides[current].classList.remove('active');
+    current = Math.max(0, Math.min(TOTAL_SLIDES - 1, idx));
+    slides[current].classList.add('active');
+    counter.textContent = `${current + 1} / ${TOTAL_SLIDES}`;
+
+    clearTimeout(autoTimer);
+    const dur = slideDurations[current] * 1000;
+    if (current < TOTAL_SLIDES - 1) {
+      autoTimer = setTimeout(() => show(current + 1), dur);
+    }
+  }
+
+  function tick() {
+    const elapsed = Date.now() - startTime;
+    const remaining = Math.max(0, DURATION_MS - elapsed);
+    const pct = Math.min(100, (elapsed / DURATION_MS) * 100);
+
+    const m = Math.floor(remaining / 60000);
+    const s = Math.floor((remaining % 60000) / 1000);
+    timerEl.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+    bar.style.width = pct + '%';
+
+    if (remaining > 0) requestAnimationFrame(tick);
+    else timerEl.textContent = '0:00';
+  }
+
+  btnPrev.addEventListener('click', () => show(current - 1));
+  btnNext.addEventListener('click', () => show(current + 1));
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') show(current + 1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                     show(current - 1);
+  });
+
+  // ── Build grid demo on slide 8 ──
+  (function buildGrid() {
+    const demo = document.getElementById('grid-demo');
+    // rows top→bottom: goal(2), safe(1), water(2), safe(1), water(2), safe(1), road(2), safe(1), frog(1)
+    const layout = [
+      // col types for a 10-wide sample of the 17-row grid (compressed)
+      { type:'gc-goal', labels:['🌸','','🌸','','🌸','','🌸','','🌸',''] },
+      { type:'gc-goal', labels:Array(10).fill('') },
+      { type:'gc-safe', labels:Array(10).fill('') },
+      { type:'gc-water',labels:Array(10).fill('') },
+      { type:'gc-water',labels:['','','','🪵','🪵','🪵','','','',''] },
+      { type:'gc-safe', labels:Array(10).fill('') },
+      { type:'gc-water',labels:Array(10).fill('') },
+      { type:'gc-water',labels:['🪵','🪵','','','','','🪵','🪵','',''] },
+      { type:'gc-safe', labels:Array(10).fill('') },
+      { type:'gc-road', labels:Array(10).fill('') },
+      { type:'gc-road', labels:['','🚗','','','🚗','','','','🚗',''] },
+      { type:'gc-safe', labels:Array(10).fill('') },
+      { type:'gc-safe', labels:['','','','','','🐸','','','',''] },
+    ];
+    layout.forEach(row => {
+      row.labels.forEach((lbl, ci) => {
+        const cell = document.createElement('div');
+        cell.className = 'gc ' + row.type;
+        if (lbl === '🐸') cell.className = 'gc gc-frog';
+        if (lbl === '🚗') cell.className = 'gc gc-car';
+        if (lbl === '🪵') cell.className = 'gc gc-log';
+        cell.textContent = lbl;
+        demo.appendChild(cell);
+      });
+    });
+  })();
+
+  // start
+  show(0);
+  requestAnimationFrame(tick);
+</script>
+</body>
+</html>
